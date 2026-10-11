@@ -1,0 +1,14 @@
+import { chromium } from 'playwright-core';
+import { readFileSync } from 'node:fs';
+import { routeTradingView, makeBackend, CHROME } from './harness.mjs';
+const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+const ctx = await browser.newContext();
+await routeTradingView(ctx, makeBackend());
+await ctx.addInitScript({ content: readFileSync('dist/tvsuite-inject.js', 'utf8') });
+const pg = await ctx.newPage();
+pg.on('console', (m) => console.log('[console]', m.type(), m.text()));
+pg.on('pageerror', (e) => console.log('[pageerror]', e.message));
+await pg.goto('https://www.tradingview.com/chart/xyz/');
+await pg.waitForTimeout(4000);
+console.log(await pg.evaluate(() => ({ tv: !!window.__TVSUITE__, host: window.__TVSUITE__?.host, layer: document.getElementById('tvsuite-skin-layer')?.dataset, st: window.__TVSUITE__?.status() })));
+await browser.close();

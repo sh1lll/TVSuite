@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TVSuite options</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body class="options">
+  <h1><b>TV</b>Suite options</h1>
+
+  <section>
+    <h2>AI provider for generated skins</h2>
+    <p class="note">Your key is stored only in this browser (chrome.storage.local) and is used only by the extension's background worker when you press <em>Generate</em>. Only your text prompt is sent — never chart data.</p>
+    <label class="row">Provider
+      <select id="provider">
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="openai-compatible">OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio…)</option>
+      </select>
+    </label>
+    <label class="row">Model <input id="model" type="text" placeholder="claude-opus-5-5"></label>
+    <label class="row" id="baseUrlRow">Base URL <input id="baseUrl" type="text" placeholder="https://api.openai.com/v1"></label>
+    <label class="row">API key <input id="apiKey" type="password" autocomplete="off" placeholder="sk-…"></label>
+    <div class="btns"><button id="saveAi">Save</button><button id="testAi">Test: generate "calm ocean at night"</button></div>
+    <p class="note" id="aiStatus"></p>
+  </section>
+
+  <section>
+    <h2>Other sites</h2>
+    <p class="note">Run TVSuite on platforms that embed TradingView charts (e.g. TopstepX/ProjectX, broker web platforms) or on any canvas dashboard. Chrome asks you to grant access to each site. Some prop firms restrict browser extensions on evaluation/funded accounts — check your firm's rules.</p>
+    <div id="sites"></div>
+    <div class="row">
+      <input id="siteHost" type="text" placeholder="topstepx.com">
+      <select id="siteKind"><option value="tv-embed">TradingView chart embed</option><option value="generic">Generic canvas page</option></select>
+      <input id="siteSelector" type="text" placeholder="CSS selector (generic only)">
+      <button id="addSite">Add</button>
+    </div>
+    <p class="note" id="siteStatus"></p>
+  </section>
+
+  <section>
+    <h2>Data</h2>
+    <div class="btns"><button id="exportAll">Export all TVSuite data</button><button id="importAll">Import…</button></div>
+    <p class="note">Exports settings, your skin library and template snapshots (not your API key).</p>
+  </section>
+  <script src="options.js"></script>
+</body>
+</html>

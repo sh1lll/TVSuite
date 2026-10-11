@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TVSuite</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body class="popup">
+  <header><b>TV</b>Suite</header>
+  <label class="row"><input type="checkbox" id="enabled"> Live skins</label>
+  <label class="row">Skin <select id="skin"></select></label>
+  <label class="row">Mode <select id="mode"><option value="under">Under the candles</option><option value="overlay">Overlay (blend)</option></select></label>
+  <label class="row">Opacity <input type="range" id="opacity" min="0" max="1" step="0.01"></label>
+  <label class="row"><input type="checkbox" id="reactive"> React to the chart (local only)</label>
+  <label class="row"><input type="checkbox" id="sessionThemes"> Session themes</label>
+  <div class="btns">
+    <button id="panel">Open panel</button>
+    <button id="here">Turn on here…</button>
+    <button id="options">Options</button>
+  </div>
+  <p class="note" id="status"></p>
+  <script src="popup.js"></script>
+</body>
+</html>

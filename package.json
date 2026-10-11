@@ -1,0 +1,26 @@
+{
+  "name": "tvsuite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An all-in-one TradingView enhancement suite: live chart skins, template manager, session tools, and a desktop launcher.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "test": "node --test test/unit/*.test.mjs",
+    "e2e": "node scripts/build.mjs && node test/e2e/run.mjs",
+    "check": "npm run build && npm test && node test/e2e/run.mjs",
+    "desktop": "node scripts/build.mjs && node desktop/launcher.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright-core": "1.56.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0"
+  }
+}

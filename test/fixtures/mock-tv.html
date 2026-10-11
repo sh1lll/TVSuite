@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BTCUSD 63,123.45 ▲ +1.20% Unnamed</title>
+<!-- A stand-in for TradingView's chart page: same structural class names, data-name attributes,
+     hashed legend class suffixes, title format and canvas painting order (full-canvas background fill
+     first, then grid and candles). Used by the e2e suite because the build environment can't reach TradingView. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #0f0f0f; color: #d1d4dc; font: 13px sans-serif; overflow: hidden; }
+  .layout__area--top { position: absolute; left: 0; right: 0; top: 0; height: 38px; background: #1e222d; display: flex; align-items: center; padding-left: 52px; }
+  .layout__area--left { position: absolute; left: 0; top: 38px; bottom: 0; width: 44px; background: #1e222d; }
+  .layout__area--right { position: absolute; right: 0; top: 38px; bottom: 0; width: 46px; background: #1e222d; }
+  .layout__area--center { position: absolute; left: 44px; right: 46px; top: 38px; bottom: 0; background: #131722; }
+  .chart-container { position: absolute; inset: 0; background: #131722; }
+  .chart-container-border, .chart-widget { position: absolute; inset: 0; background: #131722; }
+  table.chart-markup-table { position: absolute; inset: 0; width: 100%; height: 100%; border-collapse: collapse; background: #131722; }
+  td { padding: 0; position: relative; background: #131722; }
+  td.price-axis { width: 64px; }
+  td canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  [data-name="legend-series-item"] { position: absolute; left: 8px; top: 6px; z-index: 5; display: flex; gap: 8px; font-size: 12px; }
+  .valuesWrapper-l31H9iuA { display: flex; gap: 6px; } .valueItem-l31H9iuA { display: flex; gap: 2px; } .valueTitle-l31H9iuA { color: #868993; }
+</style>
+<script>document.cookie = 'csrftoken=tok%2B1; path=/';</script>
+</head>
+<body class="chart-page">
+  <div class="layout__area--top"><div id="header-toolbar-symbol-search">BTCUSD</div></div>
+  <div class="layout__area--left"></div>
+  <div class="layout__area--right"></div>
+  <div class="layout__area--center">
+    <div class="chart-container"><div class="chart-container-border"><div class="chart-widget">
+      <table class="chart-markup-table"><tr>
+        <td class="pane"><div><canvas id="main"></canvas><canvas id="overlayCanvas"></canvas></div>
+          <div data-name="legend-series-item">
+            <div data-name="legend-source-title">BTCUSD</div>
+            <div class="valuesWrapper-l31H9iuA">
+              <div class="valueItem-l31H9iuA"><div class="valueTitle-l31H9iuA">O</div><div class="valueValue-l31H9iuA" id="vO"></div></div>
+              <div class="valueItem-l31H9iuA"><div class="valueTitle-l31H9iuA">H</div><div class="valueValue-l31H9iuA" id="vH"></div></div>
+              <div class="valueItem-l31H9iuA"><div class="valueTitle-l31H9iuA">L</div><div class="valueValue-l31H9iuA" id="vL"></div></div>
+              <div class="valueItem-l31H9iuA"><div class="valueTitle-l31H9iuA">C</div><div class="valueValue-l31H9iuA" id="vC"></div></div>
+            </div>
+          </div>
+        </td>
+        <td class="price-axis"><canvas id="axis"></canvas></td>
+      </tr></table>
+    </div></div></div>
+  </div>
+<script>
+(() => {
+  const BG = '#131722';
+  const bars = [];
+  let price = 63000, vol = 1, last = null;
+  function newBar() { const o = price; last = { o, h: o, l: o, c: o }; bars.push(last); if (bars.length > 120) bars.shift(); }
+  for (let i = 0; i < 80; i++) { newBar(); for (let k = 0; k < 6; k++) step(); }
+  function step() {
+    price += (Math.random() - 0.5) * 30 * vol;
+    last.c = price; last.h = Math.max(last.h, price); last.l = Math.min(last.l, price);
+  }
+  const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function legend() {
+    vO.textContent = fmt(last.o); vH.textContent = fmt(last.h); vL.textContent = fmt(last.l); vC.textContent = fmt(last.c);
+    document.title = `BTCUSD ${fmt(last.c)} ${last.c >= bars[0].o ? '▲' : '▼'} +1.20% Unnamed`;
+  }
+  function size(c) {
+    const r = c.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w: r.width, h: r.height };
+  }
+  function paintPane(ctx, w, h) {
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);               // background fill, as the real chart does
+    ctx.strokeStyle = 'rgba(42,46,57,0.6)'; ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 80) { ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); ctx.stroke(); }
+    for (let y = 0; y < h; y += 60) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); ctx.stroke(); }
+    const lo = Math.min(...bars.map((b) => b.l)), hi = Math.max(...bars.map((b) => b.h));
+    const y = (p) => h * 0.9 - ((p - lo) / Math.max(1, hi - lo)) * h * 0.8;
+    const bw = (w * 0.7) / bars.length;
+    bars.forEach((b, i) => {
+      const x = 20 + i * bw;
+      ctx.fillStyle = ctx.strokeStyle = b.c >= b.o ? '#089981' : '#f23645';
+      ctx.beginPath(); ctx.moveTo(x + bw / 2, y(b.h)); ctx.lineTo(x + bw / 2, y(b.l)); ctx.stroke();
+      ctx.fillRect(x + 1, Math.min(y(b.o), y(b.c)), Math.max(1, bw - 2), Math.max(1, Math.abs(y(b.o) - y(b.c))));
+    });
+  }
+  function frame() {
+    const m = size(main); paintPane(m.ctx, m.w, m.h);
+    const a = size(axis); a.ctx.fillStyle = BG; a.ctx.fillRect(0, 0, a.w, a.h); a.ctx.fillStyle = '#d1d4dc'; a.ctx.fillText(fmt(last.c), 6, 20);
+    size(overlayCanvas);
+    requestAnimationFrame(frame);
+  }
+  setInterval(() => { step(); legend(); }, 200);
+  setInterval(newBar, 2000);
+  legend();
+  requestAnimationFrame(frame);
+  // Test hooks (main world).
+  window.mockTV = {
+    setVolatility(v) { vol = v; },
+    snapshot() {                                              // detached canvas, like a chart snapshot render
+      const c = document.createElement('canvas'); c.width = 400; c.height = 300;
+      paintPane(c.getContext('2d'), 400, 300);
+      return Array.from(c.getContext('2d').getImageData(395, 5, 1, 1).data);
+    },
+    pixel(id, fx, fy) {
+      const c = document.getElementById(id);
+      return Array.from(c.getContext('2d').getImageData(Math.floor(c.width * fx), Math.floor(c.height * fy), 1, 1).data);
+    },
+  };
+})();
+</script>
+</body>
+</html>

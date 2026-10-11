@@ -1,0 +1,19 @@
+:root { color-scheme: dark; --bg:#131722; --surface:#1e222d; --border:#363a45; --text:#d1d4dc; --muted:#868993; --accent:#2962ff; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif; }
+b { color: var(--accent); }
+body.popup { width: 300px; padding: 12px; }
+body.popup header { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+body.options { max-width: 760px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 20px; } h2 { font-size: 14px; margin: 0 0 6px; }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 14px 0; }
+.row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.row > input[type=text], .row > input[type=password], .row > select { flex: 1; min-width: 0; }
+input[type=text], input[type=password], select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font: inherit; }
+input[type=range] { flex: 1; accent-color: var(--accent); } input[type=checkbox] { accent-color: var(--accent); }
+.btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+button { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+button:hover { background: rgba(255,255,255,.06); }
+.note { color: var(--muted); font-size: 12px; } .err { color: #ff6b78; } .ok { color: #3fd3b4; }
+.site { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.site span { flex: 1; }
