@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TVSuite journal</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body.journal { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 12px 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
+  .entry { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .entry img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #131722; cursor: zoom-in; }
+  .entry .meta { padding: 8px 10px; display: grid; gap: 6px; }
+  .entry .row { margin: 0; flex-wrap: wrap; }
+  .entry .row > input { flex: 1; min-width: 0; }
+  .pos { color: #3fd3b4; } .neg { color: #ff6b78; }
+  table.groups { width: 100%; border-collapse: collapse; font-size: 12px; } table.groups td, table.groups th { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; } table.groups td:first-child, table.groups th:first-child { text-align: left; }
+  .tabs2 { display: flex; gap: 6px; margin: 8px 0; } .tabs2 button.on { border-color: var(--accent); }
+  canvas#curve { width: 100%; height: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  dialog { background: #000; border: 0; padding: 0; max-width: 95vw; } dialog img { max-width: 95vw; max-height: 90vh; display: block; }
+  textarea { width: 100%; min-height: 44px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font: inherit; padding: 6px; }
+</style>
+</head>
+<body class="journal">
+  <h1><b>TV</b>Suite journal</h1>
+  <p class="note">Captured with Alt+Shift+J on a chart (or Tools → Journal). Stored only in this browser.</p>
+  <div class="filters">
+    <input id="q" type="text" placeholder="Filter: symbol, tag, note…">
+    <select id="side"><option value="">All sides</option><option value="long">Long</option><option value="short">Short</option><option value="none">No trade</option></select>
+    <button id="csv">Export CSV</button><button id="json">Export JSON</button><button id="import">Import JSON…</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <canvas id="curve"></canvas>
+  <div class="tabs2" id="groupTabs"></div>
+  <table class="groups" id="groups"></table>
+  <div class="entries" id="entries"></div>
+  <dialog id="zoom"><img id="zoomImg" alt=""></dialog>
+  <script src="journal.js"></script>
+</body>
+</html>

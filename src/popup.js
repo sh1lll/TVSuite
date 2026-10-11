@@ -28,6 +28,7 @@ async function activeTab() { const [tab] = await chrome.tabs.query({ active: tru
   $('reactive').onchange = () => save((f) => { f.skins.reactive.enabled = $('reactive').checked; });
   $('sessionThemes').onchange = () => save((f) => { f.skins.sessionThemes = $('sessionThemes').checked; });
   $('options').onclick = () => chrome.runtime.openOptionsPage();
+  $('journal').onclick = () => chrome.tabs.create({ url: chrome.runtime.getURL('journal.html') });
 
   const tab = await activeTab();
   let host = '';

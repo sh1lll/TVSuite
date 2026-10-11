@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS = {
   },
   tools: {
     focusHotkey: 'Alt+Shift+F',
+    journalHotkey: 'Alt+Shift+J',
     risk: { account: 10000, riskPct: 1, entry: 0, stop: 0, market: 'stock', pointValue: 1, lotSize: 100000, pipSize: 0.0001 },
   },
   ui: {

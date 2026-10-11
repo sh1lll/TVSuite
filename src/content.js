@@ -10,6 +10,14 @@ const fetchGallery = () => new Promise((resolve, reject) => chrome.runtime.sendM
   resolve(res.skins.map((x) => validateSkin(x).skin).filter(Boolean));
 }));
 
+const journal = {
+  add: (entry) => new Promise((resolve, reject) => chrome.runtime.sendMessage({ type: 'journal.add', entry }, (res) => {
+    if (chrome.runtime.lastError || !res || res.error) return reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Journal unavailable'));
+    resolve();
+  })),
+  open: () => chrome.runtime.sendMessage({ type: 'journal.open' }),
+};
+
 const ai = {
   generate: (prompt) => new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({ type: 'ai.generate', prompt }, (res) => {
@@ -26,5 +34,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
-const boot = () => startTVSuite({ ai, openOptions, fetchGallery }).catch((err) => console.error('[TVSuite] failed to start', err));
+const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal }).catch((err) => console.error('[TVSuite] failed to start', err));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();

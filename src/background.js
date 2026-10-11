@@ -1,5 +1,6 @@
 // MV3 background service worker: AI generation (holds the API key) and custom-site registration.
 import { generateSkin, DEFAULT_AI } from './ai/providers.js';
+import { journalStore } from './modules/journal/store.js';
 
 const AI_KEY = 'ai';
 const GALLERY_URL = 'https://raw.githubusercontent.com/sh1lll/TVSuite/main/gallery/index.json';
@@ -16,11 +17,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then((skin) => sendResponse({ skin }), (err) => sendResponse({ error: err.message || String(err) }));
     return true; // async response
   }
+  if (msg?.type === 'journal.add') {
+    journalStore.add(msg.entry)
+      .then(() => chrome.storage.local.set({ 'journal:rev': Date.now() }))
+      .then(() => sendResponse({ ok: true }), (err) => sendResponse({ error: err.message || String(err) }));
+    return true;
+  }
   if (msg?.type === 'gallery.fetch') {
     fetch(GALLERY_URL, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d) => sendResponse({ skins: Array.isArray(d?.skins) ? d.skins.slice(0, 200) : [] }), (err) => sendResponse({ error: err.message }));
     return true;
+  }
+  if (msg?.type === 'journal.open') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('journal.html') });
+    sendResponse({ ok: true });
+    return false;
   }
   if (msg?.type === 'options.open') {
     chrome.tabs.create({ url: chrome.runtime.getURL(`options.html${msg.hash ? `#${msg.hash}` : ''}`) });

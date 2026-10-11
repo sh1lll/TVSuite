@@ -9,7 +9,7 @@ h1 { font-size: 20px; } h2 { font-size: 14px; margin: 0 0 6px; }
 section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 14px 0; }
 .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .row > input[type=text], .row > input[type=password], .row > select { flex: 1; min-width: 0; }
-input[type=text], input[type=password], select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font: inherit; }
+input[type=text], input[type=password], input[type=number], select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font: inherit; }
 input[type=range] { flex: 1; accent-color: var(--accent); } input[type=checkbox] { accent-color: var(--accent); }
 .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 button { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font: inherit; font-weight: 600; cursor: pointer; }

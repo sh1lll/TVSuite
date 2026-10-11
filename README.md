@@ -11,6 +11,7 @@ TVSuite is one open-source, local-only suite for TradingView:
   - You can **generate new skins from a sentence** with any model you connect.
   - Skins can be **shared as links**.
 - **Template manager.** Backup, snapshot history, diff vs live, and conflict-aware restore of drawing templates and chart themes, plus a factory reset that snapshots first. It reads and writes the same backup files as victornpb/tradingview-backup and vngbh/tradingview-template-manager.
+- **Trade journal.** Alt+Shift+J captures a clean chart image with symbol, price, session, side, entry, stop, target, tags and notes. A local journal page shows stats by session, symbol, tag, side and weekday, plus an equity curve in R and CSV/JSON export.
 - **Session clock HUD, position-size calculator** (stocks / futures / forex / crypto) and **focus mode**.
 - Runs as a **Chrome extension**, inside **TradingView Desktop** (via `desktop/launcher.mjs`), or as a **userscript**.
 - Works on **platforms that embed TradingView charts** (e.g. TopstepX/ProjectX, broker web platforms). Enable it per site.
@@ -43,6 +44,8 @@ npm run build            # → dist/extension, dist/tvsuite-inject.js, dist/tvsu
 | Alt+Shift+T | Open/close the TVSuite panel |
 | Alt+Shift+K | Skin on/off |
 | Alt+Shift+F | Focus mode (hide TradingView toolbars) |
+| Alt+Shift+J | Capture the chart to the journal |
+| Alt+Shift+H | Hide all TVSuite UI (screenshots, streams) |
 
 Hotkeys can be changed in **About**.
 
@@ -95,7 +98,7 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [ideas](docs/IDEAS.md).
 
-**Verified:** 56 unit tests and 30 e2e checks. The e2e checks run the real extension against the mock page. They cover:
+**Verified:** 59 unit tests and 31 e2e checks. The e2e checks run the real extension against the mock page. They cover:
 - the skin layer and transparency;
 - every built-in skin;
 - overlay mode, hotkeys, reactive and calm mode;

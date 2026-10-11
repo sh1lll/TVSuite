@@ -21,7 +21,7 @@ export function aboutTab(app) {
     const st = skins.status();
     const q = (sel) => { try { return document.querySelectorAll(sel).length; } catch (_) { return 0; } };
     setChildren(wrap, 
-      section('Hotkeys', hotkeyInput('Panel', ['ui', 'panelHotkey']), hotkeyInput('Skin on/off', ['ui', 'skinHotkey']), hotkeyInput('Focus mode', ['tools', 'focusHotkey']), hotkeyInput('Hide TVSuite UI', ['ui', 'streamHotkey'])),
+      section('Hotkeys', hotkeyInput('Panel', ['ui', 'panelHotkey']), hotkeyInput('Skin on/off', ['ui', 'skinHotkey']), hotkeyInput('Focus mode', ['tools', 'focusHotkey']), hotkeyInput('Hide TVSuite UI', ['ui', 'streamHotkey']), hotkeyInput('Journal capture', ['tools', 'journalHotkey'])),
       section('Privacy',
         el('div', { class: 'note' }, 'TVSuite has no account, no telemetry and no servers. Settings, skins and template snapshots stay in this browser. Chart-reactive skins read price text already on screen, locally. The only network calls are (1) TradingView\'s own template endpoints when you use the Templates tab and (2) the AI provider you configure, when you press Generate.')),
       section('Diagnostics',

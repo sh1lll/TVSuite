@@ -419,6 +419,47 @@ await check('stream mode (Alt+Shift+H) hides all TVSuite UI but keeps the skin',
   assert.equal(await page.evaluate(() => document.getElementById('tvsuite-panel-host').style.display), '');
 });
 
+await check('journal: Alt+Shift+J captures a clean chart image with context; journal page shows stats and exports CSV', async () => {
+  await page.mouse.click(700, 450);
+  await page.keyboard.press('Alt+Shift+J');
+  const p = panel(page);
+  const modal = p.locator('.modal-bg[data-journal] .modal');
+  await modal.waitFor();
+  const src = await modal.locator('img').getAttribute('src');
+  assert.match(src, /^data:image\/jpeg;base64,/);
+  // The capture must show the chart, not the skin: mostly the dark chart background.
+  const bgShare = await page.evaluate(async (dataUrl) => {
+    const img = new Image(); img.src = dataUrl; await img.decode();
+    const c = new OffscreenCanvas(img.width, img.height); const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, img.width, img.height).data; let bg = 0;
+    for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 19) < 12 && Math.abs(d[i + 1] - 23) < 12 && Math.abs(d[i + 2] - 34) < 12) bg++;
+    return bg / (d.length / 4);
+  }, src);
+  assert.ok(bgShare > 0.5, `capture is mostly chart background (${bgShare.toFixed(2)})`);
+  await modal.locator('select').selectOption('long');
+  await modal.locator('input[type=text]').fill('#breakout a-plus');
+  await modal.locator('textarea').fill('Opening drive, took the retest.');
+  await modal.getByRole('button', { name: 'Save' }).click();
+  await p.getByText('Saved to journal').waitFor();
+  const j = await context.newPage();
+  await j.goto(`chrome-extension://${extensionId}/journal.html`);
+  await j.locator('.entry').first().waitFor();
+  assert.equal(await j.locator('.entry').count(), 1);
+  assert.match(await j.locator('.entry').first().textContent(), /BTCUSD/);
+  await j.locator('.entry input[type=number]').fill('2.5');
+  await j.locator('.entry input[type=number]').press('Enter');
+  await j.locator('.entry input[type=number]').blur();
+  await j.waitForFunction(() => /\+2\.50R/.test(document.getElementById('stats').textContent));
+  const [dl] = await Promise.all([j.waitForEvent('download'), j.locator('#csv').click()]);
+  const file = path.join(OUT, 'journal.csv'); await dl.saveAs(file);
+  const csv = readFileSync(file, 'utf8');
+  assert.match(csv, /BTCUSD/);
+  assert.match(csv, /breakout a-plus/);
+  assert.match(csv, /,2\.5,/);
+  await j.screenshot({ path: path.join(OUT, '11-journal.png'), fullPage: true });
+  await j.close();
+});
+
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));
   assert.deepEqual(relevant, []);

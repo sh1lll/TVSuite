@@ -40,6 +40,9 @@ export function toolsTab(app) {
         r.market === 'futures' ? [num('$ per point', 'pointValue'), el('div', { class: 'note' }, 'ES 50 · MES 5 · NQ 20 · MNQ 2 · CL 1000 · GC 100')] : null,
         r.market === 'forex' ? [num('Units per lot', 'lotSize'), num('Pip size', 'pipSize')] : null,
         out),
+      section('Journal',
+        el('div', { class: 'note' }, `Capture the chart with context and notes (${getSettings().tools.journalHotkey}). Stored locally; stats by session, tag and symbol.`),
+        el('div', { class: 'btns' }, button('📸 Capture to journal', () => app.bus.emit('journal:capture'), 'primary'), app.journal ? button('Open journal', () => app.journal.open()) : null)),
       section('Focus',
         toggle({ label: `Focus mode — hide TradingView toolbars (${getSettings().tools.focusHotkey})`, checked: app.focus.active(), onChange: (v) => app.focus.set(v) })),
     );

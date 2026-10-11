@@ -53,7 +53,7 @@ _Last updated: 2026-10-11 (session 1)_
 - ✅ Session clock (DST-aware, overnight sessions, cached next-event search) + HUD
 - ✅ Position-size calculator (stocks, futures point value, FX lots, crypto) with float-safe rounding
 - ✅ Focus mode
-- ⏳ Trade journal: screenshot + metadata → local journal page with CSV export (gap F1/F2)
+- ✅ Trade journal: Alt+Shift+J chart capture (own canvases, clean background) + context → local journal page (stats by session/symbol/tag/side/weekday, equity curve in R, CSV/JSON export, formula-safe CSV) (gaps F1/F2)
 - ⏳ Hotkey remapper, visibility presets, spacebar fix (gaps A1–A3) — needs live DOM work
 - ⏳ Custom alert sounds (gap C4) · ⏳ layout search/tags (E1) · ⏳ UI theme packs for TradingView chrome (K1)
 
@@ -64,8 +64,8 @@ _Last updated: 2026-10-11 (session 1)_
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 56 unit tests
-- `npm run e2e`: 30 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 59 unit tests
+- `npm run e2e`: 31 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓

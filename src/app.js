@@ -11,6 +11,7 @@ import { SkinHost } from './modules/skins/host.js';
 import { createFocus } from './modules/tools/focus.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
+import { setupJournalCapture } from './ui/journal-capture.js';
 import { WORKER_SOURCE } from 'tvsuite:worker-source';
 
 export const VERSION = '0.1.0';
@@ -30,7 +31,7 @@ function queryMain(q) {
   });
 }
 
-export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, forceInline = false } = {}) {
+export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, forceInline = false } = {}) {
   if (window.__TVSUITE__) return window.__TVSUITE__;
   let settings = await loadSettings();
   const adapter = pickAdapter(settings.sites);
@@ -45,7 +46,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   const persist = debounce(() => saveSettings(settings), 250);
 
   const app = {
-    version: VERSION, host: HOST, adapter, bus, ai, openOptions, fetchGallery, queryMain,
+    version: VERSION, host: HOST, adapter, bus, ai, openOptions, fetchGallery, journal, queryMain,
     getSettings: () => settings,
     update(fn, { silent = false } = {}) {
       fn(settings);
@@ -61,6 +62,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   await skins.start();
   const panel = await createPanel(app);
   createHud(app);
+  setupJournalCapture(app);
 
   // Settings changed elsewhere (popup, options page, another tab).
   storage.watch(SETTINGS_KEY, (v) => {
@@ -88,6 +90,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     else if (matchHotkey(e, ui.skinHotkey)) { e.preventDefault(); e.stopPropagation(); app.update((s) => { s.skins.enabled = !s.skins.enabled; }); }
     else if (matchHotkey(e, settings.tools.focusHotkey)) { e.preventDefault(); e.stopPropagation(); app.focus.toggle(); }
     else if (matchHotkey(e, ui.streamHotkey)) { e.preventDefault(); e.stopPropagation(); toggleStream(); }
+    else if (matchHotkey(e, settings.tools.journalHotkey)) { e.preventDefault(); e.stopPropagation(); bus.emit('journal:capture'); }
   }, true);
 
   // Shared skin links: https://www.tradingview.com/chart/#tvskin=TVSKIN1.xxxx (the fragment never reaches a server).
