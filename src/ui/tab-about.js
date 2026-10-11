@@ -21,6 +21,9 @@ export function aboutTab(app) {
     const st = skins.status();
     const q = (sel) => { try { return document.querySelectorAll(sel).length; } catch (_) { return 0; } };
     setChildren(wrap, 
+      section('Launcher',
+        row('Show the TVS button', Object.assign(el('input', { type: 'checkbox' }), { checked: getSettings().ui.fab !== false, onchange: (e) => { update((st) => { st.ui.fab = e.target.checked; }); app.rerender(); } })),
+        el('div', { class: 'note' }, 'With the button hidden, open the panel with the hotkey below or from the TVSuite icon in the browser toolbar.')),
       section('Hotkeys', hotkeyInput('Panel', ['ui', 'panelHotkey']), hotkeyInput('Skin on/off', ['ui', 'skinHotkey']), hotkeyInput('Focus mode', ['tools', 'focusHotkey']), hotkeyInput('Hide TVSuite UI', ['ui', 'streamHotkey']), hotkeyInput('Journal capture', ['tools', 'journalHotkey'])),
       section('Privacy',
         el('div', { class: 'note' }, 'TVSuite has no account, no telemetry and no servers. Settings, skins and template snapshots stay in this browser. Chart-reactive skins read price text already on screen, locally. The only network calls are (1) TradingView\'s own template endpoints when you use the Templates tab and (2) the AI provider you configure, when you press Generate.')),

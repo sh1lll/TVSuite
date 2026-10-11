@@ -1061,6 +1061,58 @@ await check('co-watch: two charts connect by copy-paste codes, follow symbols, c
   await page.bringToFront();
 });
 
+await check('typing in the panel’s own fields never reaches the page’s shortcut handlers', async () => {
+  const p = await openPanel(page, 'capture');
+  await p.locator('.subnav button[data-value="card"]').first().click();
+  const field = p.locator('input[placeholder="@yourhandle"]').first();
+  await field.click();
+  await page.evaluate(() => { window.__tvKeys.length = 0; });
+  await page.keyboard.type('abc XYZ', { delay: 15 });
+  assert.equal(await field.inputValue(), 'abc XYZ');
+  assert.deepEqual(await page.evaluate(() => window.__tvKeys), [], 'the page saw keys typed into TVSuite');
+  // The chart itself still gets keys.
+  await page.evaluate(() => { document.getElementById('tvsuite-panel-host').shadowRoot.activeElement?.blur(); window.__tvKeys.length = 0; });
+  await page.keyboard.press('q');
+  assert.ok((await page.evaluate(() => window.__tvKeys)).includes('cap:q'));
+});
+
+await check('launcher button can be hidden completely (About tab and popup) and the panel still opens by hotkey', async () => {
+  const p = await openPanel(page, 'about');
+  await p.locator('.sec:has(.t:text("Launcher")) input[type=checkbox]').uncheck();
+  await waitFor(() => page.evaluate(() => getComputedStyle(document.getElementById('tvsuite-panel-host').shadowRoot.querySelector('.fab')).display === 'none'), { message: 'launcher hidden' });
+  await page.keyboard.press('Alt+Shift+T'); await page.keyboard.press('Alt+Shift+T');
+  await waitFor(() => page.evaluate(() => !document.getElementById('tvsuite-panel-host').shadowRoot.querySelector('.panel').hidden), { message: 'panel opens by hotkey while the button is hidden' }).catch(() => {});
+  await waitFor(async () => (await context.serviceWorkers()[0].evaluate(async () => (await chrome.storage.local.get('settings')).settings.ui.fab)) === false, { message: 'fab=false saved' });
+  const pop = await context.newPage();
+  await pop.goto(`chrome-extension://${extensionId}/popup.html`);
+  assert.equal(await pop.locator('#fab').isChecked(), false);
+  await pop.locator('#fab').check();
+  await waitFor(() => page.evaluate(() => getComputedStyle(document.getElementById('tvsuite-panel-host').shadowRoot.querySelector('.fab')).display !== 'none'), { message: 'launcher back from the popup toggle' });
+  await pop.close();
+});
+
+await check('settings page: every panel tab renders, and a change there reaches the chart tab', async () => {
+  const sp = await context.newPage();
+  const errs = [];
+  sp.on('pageerror', (e) => errs.push(e.message));
+  await sp.goto(`chrome-extension://${extensionId}/settings.html`);
+  await sp.waitForSelector('.nav button[data-tab]');
+  for (const id of ['skins', 'sound', 'risk', 'capture', 'bridge', 'sessions', 'tools', 'about']) {
+    await sp.locator(`.nav button[data-tab="${id}"]`).click();
+    for (const v of await sp.locator('.content .subnav button').evaluateAll((bs) => bs.map((b) => b.dataset.value))) await sp.locator(`.content .subnav button[data-value="${v}"]`).first().click();
+    assert.ok((await sp.locator('.content').innerText()).length > 80, `${id} rendered`);
+  }
+  assert.deepEqual(errs, [], `settings page errors: ${errs.join(' | ')}`);
+  // Change a Risk rule here; the chart tab's settings pick it up.
+  await sp.locator('.nav button[data-tab="risk"]').click();
+  await sp.locator('.content .subnav button[data-value="rules"]').first().click();
+  await sp.locator('.content input[type=text]').first().fill('Lucid 50K');
+  await sp.locator('.content input[type=text]').first().press('Tab');
+  await waitFor(async () => (await context.serviceWorkers()[0].evaluate(async () => (await chrome.storage.local.get('settings')).settings.risk.accountName)) === 'Lucid 50K', { message: 'setting saved from the settings page' });
+  await sp.screenshot({ path: path.join(OUT, '09-settings-page.png') });
+  await sp.close();
+});
+
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));
   assert.deepEqual(relevant, []);

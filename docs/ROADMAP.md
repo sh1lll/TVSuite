@@ -113,6 +113,15 @@ _Last updated: 2026-10-11._
 - ✅ WebRTC data channel with copy-paste handshake codes, symbol follow, chat, pings; optional STUN
 - 🟡 Different networks (STUN works for most home routers; strict NATs need a TURN relay, which TVSuite doesn't run)
 
+## Phase 14 — Feedback from first real use ✅ (🟡 on live sites)
+- ✅ Typing in the panel's own fields no longer triggers TradingView shortcuts: a key guard registered at document start stops those keys before the page sees them, plus a bubble-phase guard on the panel. Covered by an e2e check where the mock page listens in both capture and bubble phase.
+- ✅ The TVS button can be hidden completely (About → Launcher, or the popup). The hotkey and the popup's Open panel button still open the panel.
+- ✅ A full-page settings view (`settings.html`, opened from the popup's All settings) that renders the panel's tabs against stored settings. Edits are re-applied to a fresh copy before saving, so they don't overwrite newer changes made in a chart tab.
+- ✅ Embedded platforms: the popup couldn't read the tab's address without the activeTab permission, so the Turn on here button never appeared on TradeSea. Fixed, and the button now also asks for same-domain iframe hosts and reloads the page.
+- 🟡 TopstepX and TradeSea on the live sites: not checked (needs a login). If the chart sits in an iframe on a different domain, add that host under Accounts, sites & data.
+- 🟡 The key guard assumes the page's shortcut handlers don't register before the content script at document start. Confirmed against the mock page only.
+- ❓ "Some parts at the bottom are themed but the lines aren't": the report was unclear. Needs a screenshot or a description of which strip and which lines (grid, axis borders, the time scale, the pane separator) look wrong. Not changed yet ⏳
+
 ## Phase 5 — Desktop ✅ (🟡 on real installs)
 - ✅ `desktop/launcher.mjs`: `attach | launch | doctor`, loopback-only, chart-URL and CDP-method allow-lists, `Page.enable` + persistent injection across reloads (verified e2e against Chromium with a debug port)
 - 🟡 Windows MSIX activation via AUMID (community-reported working on 3.3.0)
@@ -121,7 +130,7 @@ _Last updated: 2026-10-11._
 
 ## Verification
 - `npm test`: 107 unit tests
-- `npm run e2e`: 64 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
+- `npm run e2e`: 67 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
 - Known flake: before the multi-tab fix, the co-watch check failed in 2 of 3 full runs (two panels re-saving settings). After the fix, the two-tab check failed once with no captured cause, then passed 2 of 2 full runs. It now reports what blocked the click if it happens again ⏳
 - `node test/e2e/perf.mjs`: per-skin cost table
 

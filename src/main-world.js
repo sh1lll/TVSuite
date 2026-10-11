@@ -7,6 +7,20 @@
   if (window.__tvsuiteMainWorld) return;
   window.__tvsuiteMainWorld = true;
 
+  // Keys typed into TVSuite's own text fields must never reach the page's shortcut handlers. This is registered
+  // before the page's scripts run, so it sees keys first. Typing itself is unaffected (we don't cancel the key);
+  // Enter, Escape and Tab still pass through because the panel's own fields use them.
+  const PASS = new Set(['Enter', 'Escape', 'Tab']);
+  const keyGuard = (e) => {
+    const path = e.composedPath ? e.composedPath() : [];
+    const t = path[0];
+    if (!t || !t.tagName || PASS.has(e.key)) return;
+    if (!(t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (!path.some((n) => typeof n.id === 'string' && n.id.startsWith('tvsuite-'))) return;
+    e.stopImmediatePropagation();
+  };
+  for (const type of ['keydown', 'keypress', 'keyup']) window.addEventListener(type, keyGuard, true);
+
   // Scripts injected over CDP (TradingView Desktop) run before <html> exists, so read the root lazily
   // and observe `document` itself rather than documentElement.
   const ATTR = 'data-tvsuite-clear';         // value: CSS selector of the scope whose canvases are cleared

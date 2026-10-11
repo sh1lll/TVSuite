@@ -21,6 +21,13 @@
   [data-name="legend-series-item"] { position: absolute; left: 8px; top: 6px; z-index: 5; display: flex; gap: 8px; font-size: 12px; }
   .valuesWrapper-l31H9iuA { display: flex; gap: 6px; } .valueItem-l31H9iuA { display: flex; gap: 2px; } .valueTitle-l31H9iuA { color: #868993; }
 </style>
+<script>
+// Stand-in for TradingView's own shortcut handlers (capture and bubble phase), registered by the page.
+window.__tvKeys = [];
+window.addEventListener('keydown', (e) => window.__tvKeys.push('cap:' + e.key), true);
+document.addEventListener('keydown', (e) => window.__tvKeys.push('doc:' + e.key));
+window.addEventListener('keyup', (e) => window.__tvKeys.push('up:' + e.key), true);
+</script>
 <script>document.cookie = 'csrftoken=tok%2B1; path=/';</script>
 </head>
 <body class="chart-page">

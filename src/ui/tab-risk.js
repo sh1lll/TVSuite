@@ -43,7 +43,7 @@ export function riskTab(app) {
         el('div', { class: 'btns' }, button('Set up my rules', () => { view = 'rules'; render(); }, 'primary', { icon: 'shield', dataset: { riskSetup: '1' } })));
     }
     const r = risk.tick() || risk.last();
-    if (!r) return el('div', { class: 'note' }, 'Loading…');
+    if (!r) return el('div', { class: 'note' }, app.live === false ? 'Live P&L and limit meters are on the panel over your chart. Everything here still applies to them.' : 'Loading…');
     const color = COLORS[r.status];
     const parts = [];
     parts.push(el('div', { class: 'hero', style: { padding: '14px', background: `linear-gradient(135deg, ${color}26, rgba(91,140,255,.08))`, borderColor: `${color}66` }, dataset: { riskStatus: r.status } },

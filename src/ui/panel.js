@@ -11,6 +11,7 @@ import { soundTab } from './tab-sound.js';
 import { bridgeTab } from './tab-bridge.js';
 import { riskTab } from './tab-risk.js';
 import { captureTab } from './tab-capture.js';
+import { isTypingTarget } from '../core/hotkeys.js';
 
 const ALL_TABS = [['skins', 'Skins'], ['sound', 'Sound'], ['risk', 'Risk'], ['capture', 'Capture'], ['bridge', 'Bridge'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
 const SHORT = { templates: 'Backup' };
@@ -23,6 +24,9 @@ export async function createPanel(app) {
   const root = el('div', { class: 'root' });
   shadow.append(root);
   app.root = root;
+  // Keys typed into the panel's own fields must not reach TradingView's shortcut handlers (the shadow DOM
+  // makes the page see the host element, not the input, so it can't tell you're typing).
+  for (const type of ['keydown', 'keyup', 'keypress']) shadow.addEventListener(type, (e) => { if (isTypingTarget(e)) e.stopPropagation(); });
 
   const pos = (await storage.get(POS_KEY)) || { x: 52, y: null };
   const fab = el('div', { class: 'fab', title: `TVSuite (${app.getSettings().ui.panelHotkey})`, role: 'button', tabindex: '0', 'aria-label': 'Open TVSuite' }, brandMark());
@@ -34,6 +38,7 @@ export async function createPanel(app) {
     tabsBar, body);
   root.append(fab, panel);
 
+  const applyFab = () => { fab.style.display = app.getSettings().ui.fab === false ? 'none' : ''; };
   function place() {
     const y = pos.y ?? window.innerHeight - 110;
     Object.assign(fab.style, { left: '9px', top: `${Math.max(40, Math.min(window.innerHeight - 44, y))}px` });
@@ -83,6 +88,7 @@ export async function createPanel(app) {
   app.bus.on('panel:open', (tab) => setOpen(true, tab));
 
   document.documentElement.append(host);
+  applyFab();
   place();
   if (app.getSettings().ui.panelOpen) setOpen(true);
 
@@ -92,7 +98,7 @@ export async function createPanel(app) {
     hide: () => setOpen(false),
     show: (tab) => setOpen(true, tab),
     // Rebuild settings-driven tabs; the Templates tab keeps its state (and any running operation).
-    rerender: () => { for (const k of Object.keys(views)) { if (k === 'templates') continue; views[k].dispose?.(); delete views[k]; } if (!panel.hidden) showTab(current); },
+    rerender: () => { applyFab(); for (const k of Object.keys(views)) { if (k === 'templates') continue; views[k].dispose?.(); delete views[k]; } if (!panel.hidden) showTab(current); },
     el: host,
   };
 }
