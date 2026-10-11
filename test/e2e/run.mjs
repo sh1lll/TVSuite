@@ -136,6 +136,24 @@ await check('look controls apply CSS filters (dim, blur, black & white)', async 
   await p.getByText('Black & white').click();
 });
 
+await check('skin parameter sliders tweak the live renderer without respawning it', async () => {
+  const p = await openPanel(page, 'skins');
+  await p.locator('.card[data-skin="starfield"]').click();
+  await waitFor(async () => { const x = await layerData(page); return x?.skin === 'starfield' && x?.state === 'running'; }, { message: 'starfield running' });
+  const frames = () => page.evaluate(() => document.getElementById('tvsuite-skin-layer') && 1);
+  const statesSeen = [];
+  const unsub = setInterval(async () => { try { statesSeen.push((await layerData(page)).state); } catch (_) { /* navigating */ } }, 50);
+  const hue = p.locator('.sec', { hasText: 'Skin parameters' }).locator('input[type=range]').nth(2);
+  for (const v of [100, 150, 200, 250, 300]) { await hue.fill(String(v)); await sleep(60); }
+  await sleep(400);
+  clearInterval(unsub);
+  assert.ok(await frames());
+  assert.ok(!statesSeen.includes('starting'), `no new renderer started while dragging (${[...new Set(statesSeen)]})`);
+  await p.getByRole('button', { name: 'Reset' }).click();
+  await waitFor(async () => (await layerData(page))?.state === 'running', { message: 'running after reset' });
+  await p.locator('.card[data-skin="aurora"]').click();
+});
+
 await check('hotkey Alt+Shift+K toggles the skin and restores the chart background', async () => {
   await page.mouse.click(700, 450);
   await page.keyboard.press('Alt+Shift+K');
@@ -303,6 +321,17 @@ await check('focus mode hides TradingView chrome (Alt+Shift+F)', async () => {
   assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.layout__area--left')).display), 'none');
   await page.keyboard.press('Alt+Shift+F');
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.layout__area--left')).display), 'none');
+});
+
+await check('popup off→on toggle is applied in the tab (no echo suppression of real changes)', async () => {
+  const pop = await context.newPage();
+  await pop.goto(`chrome-extension://${extensionId}/popup.html`);
+  await pop.waitForSelector('#skin option', { state: 'attached' });
+  await pop.locator('#enabled').uncheck();
+  await waitFor(async () => (await layerData(page))?.display === 'none', { message: 'off' });
+  await pop.locator('#enabled').check();
+  await waitFor(async () => (await layerData(page))?.display === 'block', { message: 'back on' });
+  await pop.close();
 });
 
 await check('popup reflects settings and toggles the skin in the open tab', async () => {

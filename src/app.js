@@ -1,7 +1,7 @@
 // Shared bootstrap for every host (extension content script, TradingView Desktop injection, userscript).
 import { Bus } from './core/bus.js';
 import { storage, withDefaults, stableStringify } from './core/storage.js';
-import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from './core/settings.js';
+import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings, isOwnWrite } from './core/settings.js';
 import { HOST } from './core/env.js';
 import { debounce } from './core/dom.js';
 import { matchHotkey, isTypingTarget } from './core/hotkeys.js';
@@ -35,12 +35,14 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   let settings = await loadSettings();
   const adapter = pickAdapter(settings.sites);
   if (!adapter) return null;
+  if (adapter.id === 'tradingview-embed') {
+    // Registered hosts inject into every frame; only frames that actually render a chart start TVSuite.
+    const { waitFor } = await import('./core/dom.js');
+    if (!(await waitFor('.chart-markup-table, .chart-container', { timeout: 30000 }))) return null;
+  }
 
   const bus = new Bus();
-  // Remember what we wrote so storage change events caused by our own saves are not mistaken for
-  // edits from the popup/options page/another tab (which would rebuild the panel under the user).
-  const ownWrites = [stableStringify(settings)];
-  const persist = debounce(() => { const json = stableStringify(settings); ownWrites.push(json); if (ownWrites.length > 20) ownWrites.shift(); saveSettings(settings); }, 250);
+  const persist = debounce(() => saveSettings(settings), 250);
 
   const app = {
     version: VERSION, host: HOST, adapter, bus, ai, openOptions, fetchGallery, queryMain,
@@ -62,10 +64,11 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
 
   // Settings changed elsewhere (popup, options page, another tab).
   storage.watch(SETTINGS_KEY, (v) => {
-    const json = stableStringify(v);
-    if (!v || ownWrites.includes(json) || json === stableStringify(settings)) return;
+    // Our own saves echo back through storage events; only react to writes from other contexts.
+    if (!v || isOwnWrite(v)) return;
+    const changedUi = stableStringify({ ...v, _meta: 0 }) !== stableStringify({ ...settings, _meta: 0 });
     settings = withDefaults(DEFAULT_SETTINGS, v);
-    ownWrites.push(json);
+    if (!changedUi) return;
     skins.update();
     panel.rerender();
   });

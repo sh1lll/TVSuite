@@ -77,7 +77,7 @@ export function createSkinsModule(ctx) {
   const builtins = builtinIndex();
   let layer = null, shadow = null, transport = null, status = { state: 'off' };
   let tracker = new SignalTracker(getSettings().skins.reactive);
-  let lastSession = undefined, sessionSkin = null;
+  let lastSession = undefined;
   let timers = [];
   let lastApplied = null;
   let sent = {};
@@ -181,14 +181,29 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
 
   let symbol = null, tick = 0;
 
-  function currentSkin() {
+  function sessionSkinFor(sessId) {
+    if (!sessId) return null;
+    const sess = getSettings().sessions.list.find((x) => x.id === sessId);
+    const skinId = sess?.skin;
+    if (!skinId) return null;
+    const lib = s().library.find((x) => x.id === skinId);
+    if (lib) return lib;
+    const b = builtins.get(skinId);
+    return b ? { kind: 'builtin', base: b.id, id: b.id, name: b.name } : null;
+  }
+
+  // The skin record to show, without per-skin param overrides (those travel as 'params' messages so
+  // dragging a slider tweaks the live renderer instead of spawning a new one).
+  function baseSkin() {
     const cfg = s();
     const pinned = symbol && cfg.perSymbol?.[symbol];
-    const skin = pinned || ((cfg.sessionThemes && sessionSkin) ? sessionSkin : cfg.active);
-    if (!skin) return null;
-    const id = skin.id || skin.base;
-    const overrides = cfg.params?.[id];
-    return overrides ? { ...skin, params: { ...(skin.params || {}), ...overrides } } : skin;
+    return pinned || (cfg.sessionThemes && sessionSkinFor(lastSession)) || cfg.active || null;
+  }
+  function overridesFor(skin) { return skin ? s().params?.[skin.id || skin.base] || null : null; }
+  function currentSkin() {
+    const skin = baseSkin();
+    const o = overridesFor(skin);
+    return skin && o ? { ...skin, params: { ...(skin.params || {}), ...o } } : skin;
   }
 
   // Local media files live in extension storage, which only the extension-origin media frame can read.
@@ -208,9 +223,18 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     // Only send what changed: a scale message resizes (and re-seeds) the running skin.
     if (sent.fps !== cfg.fps) { sent.fps = cfg.fps; transport.send({ type: 'fps', fps: cfg.fps }); }
     if (sent.scale !== cfg.scale) { sent.scale = cfg.scale; transport.send({ type: 'scale', scale: cfg.scale }); }
-    const skin = cfg.enabled ? currentSkin() : null;
-    const key = JSON.stringify(skin);
-    if (key !== lastApplied) { lastApplied = key; transport.send({ type: 'skin', skin }); }
+    const base = cfg.enabled ? baseSkin() : null;
+    const key = JSON.stringify(base);
+    const overrides = JSON.stringify(overridesFor(base));
+    const o = overridesFor(base);
+    if (key !== lastApplied || (overrides !== sent.params && !o)) {
+      // New skin, or overrides were reset (params merge, so defaults need a fresh start).
+      lastApplied = key; sent.params = overrides;
+      transport.send({ type: 'skin', skin: cfg.enabled ? currentSkin() : null });
+    } else if (overrides !== sent.params) {
+      sent.params = overrides;
+      transport.send({ type: 'params', params: { ...(base?.params || {}), ...o } });
+    }
     transport.send({ type: 'pause', paused: !cfg.enabled || document.hidden });
     transport.send({ type: 'signals', signals: cfg.reactive.enabled ? tracker.signals() : NEUTRAL_SIGNALS });
   }
@@ -245,13 +269,6 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     if (id !== lastSession) {
       if (lastSession !== undefined) { tracker.sessionChanged(); bus.emit('sessions:change', sess); }
       lastSession = id;
-      const skinId = sess?.skin;
-      sessionSkin = null;
-      if (skinId) {
-        const lib = s().library.find((x) => x.id === skinId);
-        if (lib) sessionSkin = lib;
-        else if (builtins.has(skinId)) { const b = builtins.get(skinId); sessionSkin = { kind: 'builtin', base: b.id, id: b.id, name: b.name }; }
-      }
       if (s().sessionThemes) pushAll();
     }
   }

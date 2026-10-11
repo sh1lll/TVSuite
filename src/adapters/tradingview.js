@@ -4,6 +4,16 @@
 import { parsePrice, parseTitle } from '../modules/skins/signals.js';
 
 const q = (sel, root = document) => { try { return root.querySelector(sel); } catch (_) { return null; } };
+
+let hoverTarget = null;
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerover', (e) => { hoverTarget = e.target; }, true);
+  document.addEventListener('pointerleave', () => { hoverTarget = null; }, true);
+  document.addEventListener('mouseout', (e) => { if (!e.relatedTarget) hoverTarget = null; }, true);
+}
+function pointerOverChart() {
+  try { return !!(hoverTarget && hoverTarget.closest && hoverTarget.closest('.chart-markup-table')); } catch (_) { return false; }
+}
 const qa = (sel, root = document) => { try { return [...root.querySelectorAll(sel)]; } catch (_) { return []; } };
 
 export const tradingview = {
@@ -31,10 +41,12 @@ export const tradingview = {
   ],
 
   // One observation of the main series: { symbol, open, high, low, close, price }.
+  // While the crosshair is over the chart the legend shows the *hovered* historical bar, so OHLC is
+  // skipped then and only the live price from the tab title is used.
   readObservation() {
     const obs = {};
     const legend = q('[data-name="legend-series-item"]') || q('[data-name="legend-source-item"]');
-    if (legend) {
+    if (legend && !pointerOverChart()) {
       for (const item of qa('[class*="valueItem"]', legend)) {
         const title = (q('[class*="valueTitle"]', item)?.textContent || '').trim().toUpperCase();
         const value = parsePrice(q('[class*="valueValue"]', item)?.textContent);

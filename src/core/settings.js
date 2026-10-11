@@ -54,6 +54,14 @@ export async function loadSettings() {
   return withDefaults(DEFAULT_SETTINGS, await storage.get(SETTINGS_KEY));
 }
 
+// Every context (each tab's content script, popup, options page) tags its writes, so a tab can tell its
+// own storage echoes apart from real changes made elsewhere — even when the content is identical.
+export const WRITER_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+let rev = 0;
+
 export async function saveSettings(settings) {
-  await storage.set(SETTINGS_KEY, settings);
+  settings._meta = { writer: WRITER_ID, rev: ++rev };
+  return storage.set(SETTINGS_KEY, settings);
 }
+
+export function isOwnWrite(value) { return value?._meta?.writer === WRITER_ID; }

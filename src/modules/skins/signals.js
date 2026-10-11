@@ -86,7 +86,8 @@ export class SignalTracker {
     if (obs.symbol && this.symbol && obs.symbol !== this.symbol) this.reset();
     if (obs.symbol) this.symbol = obs.symbol;
 
-    const price = Number.isFinite(obs.close) ? obs.close : obs.price;
+    // The live last price (tab title) beats the legend close, which can lag or show a hovered bar.
+    const price = Number.isFinite(obs.price) ? obs.price : obs.close;
     if (Number.isFinite(obs.high) && Number.isFinite(obs.low) && obs.high >= obs.low) {
       const key = obs.barKey ?? obs.open;
       if (key !== this.barKey) {

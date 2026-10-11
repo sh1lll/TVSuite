@@ -82,3 +82,11 @@ test('SignalTracker: symbol change resets state; pulse decays', () => {
   for (let i = 0; i < 40; i++) tr.tick(3000 + i * 250);
   assert.ok(tr.signals().pulse < 0.1);
 });
+
+test('SignalTracker prefers the live price over a (possibly hovered) legend close', () => {
+  const tr = new SignalTracker();
+  tr.update({ open: 100, high: 101, low: 99, close: 50, price: 100.5, t: 1000 });
+  assert.equal(tr.lastPrice, 100.5);
+  tr.update({ close: 70, t: 2000 });
+  assert.equal(tr.lastPrice, 70, 'falls back to close when no live price');
+});

@@ -42,7 +42,9 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
       const label = document.createElement('span'); label.textContent = `${site.host} — ${site.kind === 'generic' ? `generic (${site.selector})` : 'TradingView embed'}`;
       const del = document.createElement('button'); del.textContent = 'Remove';
       del.onclick = async () => {
-        s.sites.splice(i, 1); await saveSettings(s);
+        const fresh = await loadSettings();
+        fresh.sites = fresh.sites.filter((x) => x.host !== site.host);
+        await saveSettings(fresh);
         await chrome.permissions.remove({ origins: [`https://${site.host}/*`] }).catch(() => {});
         await chrome.runtime.sendMessage({ type: 'sites.sync' }); renderSites();
       };

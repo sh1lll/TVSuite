@@ -8,7 +8,8 @@ async function activeTab() { const [tab] = await chrome.tabs.query({ active: tru
 
 (async () => {
   const s = await loadSettings();
-  const save = () => saveSettings(s);
+  // Re-read before each write so changes made in a TradingView tab meanwhile aren't overwritten.
+  const save = async (mutate) => { const fresh = await loadSettings(); mutate(fresh); await saveSettings(fresh); };
   const options = [...BUILTIN_CANVAS, ...BUILTIN_SHADERS].map((b) => ({ value: b.id, label: b.name, rec: { kind: 'builtin', base: b.id, id: b.id, name: b.name } }))
     .concat(s.skins.library.map((sk) => ({ value: sk.id, label: `★ ${sk.name}`, rec: sk })));
   const activeId = s.skins.active?.id || s.skins.active?.base;
@@ -20,12 +21,12 @@ async function activeTab() { const [tab] = await chrome.tabs.query({ active: tru
   $('reactive').checked = s.skins.reactive.enabled;
   $('sessionThemes').checked = s.skins.sessionThemes;
 
-  $('enabled').onchange = () => { s.skins.enabled = $('enabled').checked; save(); };
-  $('skin').onchange = () => { s.skins.active = options.find((o) => o.value === $('skin').value).rec; s.skins.enabled = true; $('enabled').checked = true; save(); };
-  $('mode').onchange = () => { s.skins.mode = $('mode').value; save(); };
-  $('opacity').oninput = () => { s.skins.opacity = +$('opacity').value; save(); };
-  $('reactive').onchange = () => { s.skins.reactive.enabled = $('reactive').checked; save(); };
-  $('sessionThemes').onchange = () => { s.skins.sessionThemes = $('sessionThemes').checked; save(); };
+  $('enabled').onchange = () => save((f) => { f.skins.enabled = $('enabled').checked; });
+  $('skin').onchange = () => { const rec = options.find((o) => o.value === $('skin').value).rec; $('enabled').checked = true; save((f) => { f.skins.active = rec; f.skins.enabled = true; }); };
+  $('mode').onchange = () => save((f) => { f.skins.mode = $('mode').value; });
+  $('opacity').oninput = () => save((f) => { f.skins.opacity = +$('opacity').value; });
+  $('reactive').onchange = () => save((f) => { f.skins.reactive.enabled = $('reactive').checked; });
+  $('sessionThemes').onchange = () => save((f) => { f.skins.sessionThemes = $('sessionThemes').checked; });
   $('options').onclick = () => chrome.runtime.openOptionsPage();
 
   const tab = await activeTab();
@@ -37,8 +38,7 @@ async function activeTab() { const [tab] = await chrome.tabs.query({ active: tru
   $('here').onclick = async () => {
     const granted = await chrome.permissions.request({ origins: [`https://${host}/*`] });
     if (!granted) { $('status').textContent = 'Permission not granted.'; return; }
-    if (!s.sites.some((x) => x.host === host)) s.sites.push({ host, kind: 'tv-embed' });
-    await save();
+    await save((f) => { if (!f.sites.some((x) => x.host === host)) f.sites.push({ host, kind: 'tv-embed' }); });
     await chrome.runtime.sendMessage({ type: 'sites.sync' });
     $('status').textContent = `Enabled on ${host}. Reload the page.`;
   };

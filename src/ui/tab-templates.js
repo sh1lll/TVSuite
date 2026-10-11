@@ -20,12 +20,24 @@ export function templatesTab(app) {
     return ans?.username || 'user';
   }
 
-  async function loadSnapshots() { return (await storage.get(SNAP_KEY, [])) || []; }
+  // Snapshot list is cached in memory; storage is read once and written on change.
+  let snapCache = null;
+  async function loadSnapshots() {
+    if (!snapCache) snapCache = (await storage.get(SNAP_KEY, [])) || [];
+    return snapCache;
+  }
+  async function writeSnapshots(list) {
+    await storage.setStrict(SNAP_KEY, list);
+    snapCache = list;
+  }
+  // Throws unless the snapshot is verifiably persisted — destructive actions depend on it.
   async function saveSnapshot(data, reason) {
     const list = await loadSnapshots();
     const snap = { id: `s${Date.now().toString(36)}`, createdAt: Date.now(), reason, user: await username(), counts: countEntries(data), data: { THEMES: data.THEMES, TOOLS: data.TOOLS } };
-    list.unshift(snap);
-    await storage.set(SNAP_KEY, pruneSnapshots(list, getSettings().templates.keepSnapshots));
+    const next = pruneSnapshots([snap, ...list], getSettings().templates.keepSnapshots);
+    try { await writeSnapshots(next); } catch (err) { throw new Error(`Safety snapshot could not be saved (${err.message}). Nothing was changed.`); }
+    const back = (await storage.get(SNAP_KEY, [])) || [];
+    if (!back.some((x) => x.id === snap.id)) throw new Error('Safety snapshot could not be verified in storage. Nothing was changed.');
     return snap;
   }
 
@@ -146,7 +158,7 @@ export function templatesTab(app) {
         el('div', { class: 'grow' }, el('div', {}, new Date(sn.createdAt).toLocaleString()), el('div', { class: 'note' }, `${sn.counts.themes} themes · ${sn.counts.templates} templates · ${sn.reason}`)),
         button('Load', () => { useSource(sn.data, `Snapshot ${new Date(sn.createdAt).toLocaleString()}`); setMsg('Snapshot loaded. Compare or Restore below.', 'ok'); }, 'sm'),
         button('↓', () => downloadJson(backupFilename(sn.user || 'user', new Date(sn.createdAt)), makeBackup(sn.data, sn.user)), 'sm', { title: 'Export' }),
-        button('✕', async () => { await storage.set(SNAP_KEY, list.filter((x) => x.id !== sn.id)); render(); }, 'sm', { title: 'Delete snapshot' })));
+        button('✕', async () => { await writeSnapshots(list.filter((x) => x.id !== sn.id)).catch((err) => setMsg(err.message, 'err')); render(); }, 'sm', { title: 'Delete snapshot' })));
     }
     return section(`Snapshots (${list.length})`, box);
   }

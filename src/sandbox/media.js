@@ -4,7 +4,7 @@ import { getMedia } from '../core/media-store.js';
 
 const token = new URLSearchParams(location.hash.slice(1)).get('token');
 const root = document.getElementById('root');
-let el = null, objectUrl = null, paused = false, currentUrl = null;
+let el = null, paused = false, currentUrl = null, seq = 0;
 
 function reply(msg) { parent.postMessage({ tvsuite: 'sandbox', token, ...msg }, '*'); }
 
@@ -12,12 +12,13 @@ async function show(skin) {
   if (!skin || skin.kind !== 'media') return;
   if (skin.url === currentUrl && el) { el.style.objectFit = skin.fit || 'cover'; return; }
   currentUrl = skin.url;
-  let src = skin.url, type = '';
+  const mine = ++seq; // a newer show() supersedes this one if it finishes first
+  let src = skin.url, type = '', objectUrl = null;
   try {
     if (skin.url.startsWith('local:')) {
       const rec = await getMedia(skin.url.slice(6));
+      if (mine !== seq) return;
       if (!rec) throw new Error('This media file is no longer in TVSuite (it may have been removed in Options).');
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(rec.blob);
       src = objectUrl; type = rec.type;
     }
@@ -28,9 +29,10 @@ async function show(skin) {
     next.addEventListener(isVideo ? 'loadeddata' : 'load', () => { next.style.opacity = '1'; reply({ type: 'status', status: { state: 'running', skin: skin.id, mode: 'media' } }); }, { once: true });
     next.addEventListener('error', () => reply({ type: 'status', status: { state: 'error', skin: skin.id, message: isVideo ? 'This video can\'t be played here (codec not supported by this browser?)' : 'Image failed to load' } }), { once: true });
     next.src = src;
+    if (objectUrl) next.dataset.objectUrl = objectUrl;
     root.append(next);
     const old = el; el = next;
-    if (old) setTimeout(() => old.remove(), 800);
+    if (old) setTimeout(() => { old.remove(); if (old.dataset.objectUrl) URL.revokeObjectURL(old.dataset.objectUrl); }, 800);
     reply({ type: 'status', status: { state: 'starting', skin: skin.id, mode: 'media' } });
   } catch (err) {
     reply({ type: 'status', status: { state: 'error', skin: skin.id, message: err.message } });

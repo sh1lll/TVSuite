@@ -83,7 +83,8 @@ export async function createPanel(app) {
   return {
     toggle: () => setOpen(panel.hidden),
     open: (tab) => setOpen(true, tab),
-    rerender: () => { for (const k of Object.keys(views)) { views[k].dispose?.(); delete views[k]; } if (!panel.hidden) showTab(current); },
+    // Rebuild settings-driven tabs; the Templates tab keeps its state (and any running operation).
+    rerender: () => { for (const k of Object.keys(views)) { if (k === 'templates') continue; views[k].dispose?.(); delete views[k]; } if (!panel.hidden) showTab(current); },
     el: host,
   };
 }

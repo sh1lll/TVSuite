@@ -64,8 +64,8 @@ _Last updated: 2026-10-11 (session 1)_
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 55 unit tests
-- `npm run e2e`: 28 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 56 unit tests
+- `npm run e2e`: 30 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓

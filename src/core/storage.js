@@ -10,7 +10,7 @@ function lsGet(key) {
 }
 
 function lsSet(key, value) {
-  try { localStorage.setItem(PREFIX + key, JSON.stringify(value)); } catch (_) { /* quota or disabled */ }
+  try { localStorage.setItem(PREFIX + key, JSON.stringify(value)); return true; } catch (_) { return false; }
 }
 
 export const storage = {
@@ -25,12 +25,17 @@ export const storage = {
     return v === undefined ? fallback : v;
   },
 
+  // Resolves true on success, false on failure (quota, invalidated context). Callers that must not
+  // proceed on a failed write (safety snapshots) check the result or use setStrict().
   async set(key, value) {
     if (IS_EXTENSION) {
-      try { await chrome.storage.local.set({ [key]: value }); } catch (_) { /* context invalidated */ }
-      return;
+      try { await chrome.storage.local.set({ [key]: value }); return true; } catch (_) { return false; }
     }
-    lsSet(key, value);
+    return lsSet(key, value);
+  },
+
+  async setStrict(key, value) {
+    if (!(await storage.set(key, value))) throw new Error('Could not save to browser storage (it may be full)');
   },
 
   // Calls fn(newValue) whenever key changes from another context (popup, options page, other tab).
