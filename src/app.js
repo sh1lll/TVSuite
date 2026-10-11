@@ -17,6 +17,8 @@ import { createBlockOverlay } from './ui/block-overlay.js';
 import { createRecorder } from './modules/capture/recorder.js';
 import { setupCapture } from './ui/capture.js';
 import { createMini } from './modules/capture/mini.js';
+import { createLights } from './modules/lights/index.js';
+import { createVoice } from './modules/voice/index.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -42,7 +44,7 @@ function queryMain(q) {
   });
 }
 
-export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, notify = null, share = null, recordings = null, forceInline = false } = {}) {
+export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, notify = null, share = null, recordings = null, lightsSend = null, forceInline = false } = {}) {
   if (window.__TVSUITE__) return window.__TVSUITE__;
   let settings = await loadSettings();
   const adapter = pickAdapter(settings.sites);
@@ -73,6 +75,17 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
       if (!silent) { skins.update(); sound.update(); bus.emit('settings', settings); }
     },
     rerender: () => panel?.rerender(),
+    // Change the chart's symbol/interval: TradingView's page API when present (no reload), else the URL.
+    async setChart({ symbol = null, interval = null } = {}) {
+      const r = await queryMain(JSON.stringify({ cmd: 'setChart', symbol, interval }));
+      if (r?.ok) { bus.emit('chart:set', { symbol, interval, via: 'api' }); return 'api'; }
+      const onChart = /(^|\.)tradingview\.com$/.test(location.hostname) && location.pathname.startsWith('/chart');
+      const u = new URL(onChart ? location.href : 'https://www.tradingview.com/chart/');
+      if (symbol) u.searchParams.set('symbol', symbol);
+      if (interval) u.searchParams.set('interval', interval);
+      if (onChart) location.assign(u.toString()); else window.open(u.toString(), '_blank', 'noopener');
+      return 'url';
+    },
   };
 
   // Trade entry/exit detection (pop-up keywords, hotkeys) feeds sound, the recorder and lights.
@@ -86,6 +99,8 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   app.chartTime = createChartTime({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
   app.recorder = createRecorder({ adapter, getSettings: () => settings, bus, risk: app.risk, symbol: () => skins.symbol() });
   app.mini = createMini({ adapter, getSettings: () => settings, bus, risk: app.risk, recorder: app.recorder, sound, symbol: () => skins.symbol() });
+  app.lights = createLights({ getSettings: () => settings, bus, risk: app.risk, send: lightsSend });
+  app.voice = createVoice(app);
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   await skins.start();
   sound.start();
@@ -137,6 +152,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     else if (matchHotkey(e, ui.streamHotkey)) { e.preventDefault(); e.stopPropagation(); toggleStream(); }
     else if (matchHotkey(e, settings.tools.journalHotkey)) { e.preventDefault(); e.stopPropagation(); bus.emit('journal:capture'); }
     else if (matchHotkey(e, settings.capture.recorder.hotkey)) { e.preventDefault(); e.stopPropagation(); app.capture.toggleRecording(); }
+    else if (settings.voice.enabled && matchHotkey(e, settings.voice.hotkey)) { e.preventDefault(); e.stopPropagation(); app.voice.listen(); }
     else if (matchHotkey(e, settings.capture.miniHotkey)) { e.preventDefault(); e.stopPropagation(); app.mini.openChart().catch((err) => console.warn('[TVSuite]', err.message)); }
     else if (matchHotkey(e, settings.capture.hotkey)) { e.preventDefault(); e.stopPropagation(); app.capture.quickCard(); }
     else if (wantsTradeEvents() && matchHotkey(e, settings.sound.hotkeys.entry)) { e.preventDefault(); e.stopPropagation(); bus.emit('trade:event', { type: 'tradeEntry', source: 'hotkey' }); }

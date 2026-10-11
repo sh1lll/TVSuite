@@ -67,7 +67,7 @@ export function bridgeTab(app) {
         el('div', { class: 'grow', style: { minWidth: 0, padding: '6px 0' } },
           el('div', { style: { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, x.symbol),
           el('div', { class: 'note', style: { margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, `${x.host} · ${ago ? `${ago} min ago` : 'now'}`)),
-        tv ? button(onTradingView() ? 'Open here' : 'Open in TradingView', () => openOnTradingView(tv), 'sm primary') : chip('unknown symbol'),
+        tv ? button(onTradingView() ? 'Open here' : 'Open in TradingView', () => (onTradingView() ? app.setChart({ symbol: tv }) : openOnTradingView(tv)), 'sm primary') : chip('unknown symbol'),
         button('Translate', () => { userTyped = true; query = x.symbol; input.value = x.symbol; paintTable(); }, 'sm'));
     })) : el('div', { class: 'note' }, IS_EXTENSION
       ? 'Open TradingView, TopstepX/ProjectX or another site with TVSuite turned on, and the symbol each one shows appears here.'

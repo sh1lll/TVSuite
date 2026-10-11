@@ -45,6 +45,23 @@
     <p class="note" id="shareStatus"></p>
   </section>
 
+  <section id="lights">
+    <h2>Room lighting</h2>
+    <p class="note">Your lights follow the trading session, pulse on fills and alerts, and turn red when a Risk Guard limit is hit. Turn it on and choose colours in the panel: Sound → Lights. TVSuite talks to your devices from its background worker; nothing goes through a TVSuite server.</p>
+    <div id="lightDevices"></div>
+    <div class="row">
+      <select id="lightType">
+        <option value="hue">Philips Hue bridge</option>
+        <option value="ha">Home Assistant (also Govee LAN, LIFX, Nanoleaf, Zigbee…)</option>
+        <option value="wled">WLED strip</option>
+        <option value="govee">Govee (cloud API key)</option>
+      </select>
+    </div>
+    <div id="lightFields"></div>
+    <div class="btns"><button id="addLight">Add device</button></div>
+    <p class="note" id="lightStatus"></p>
+  </section>
+
   <section id="notify">
     <h2>Desktop notifications</h2>
     <p class="note">Mirror TVSuite sound events (trade entered/closed, alerts, price levels, sessions) as system notifications while the chart tab is in the background. Clicking one brings the chart back.</p>

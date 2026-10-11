@@ -64,6 +64,8 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     await chrome.runtime.sendMessage({ type: 'sites.sync' });
     status('siteStatus', `Added ${host}. Reload that site's tab.`, 'ok');
     renderSites();
+  };
+  renderSites();
 
   // Discord / Telegram (secrets live under their own key; only this page and the background read it).
   const SECRETS = 'share:secrets';
@@ -106,6 +108,66 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
   $('testDiscord').onclick = test('discord');
   $('testTelegram').onclick = test('telegram');
 
+  // Room lighting devices (secrets: Hue username, HA token, Govee key — this page and the background only).
+  const LKEY = 'lights:secrets';
+  const FIELDS = {
+    hue: [['bridge', 'Bridge address', 'https://192.168.1.20'], ['username', 'App key (press Pair)', ''], ['group', 'Room/zone id (or leave empty)', '1'], ['light', 'Light id (if no room)', '']],
+    ha: [['base', 'Home Assistant URL', 'http://homeassistant.local:8123'], ['token', 'Long-lived access token', ''], ['entities', 'Light entities', 'light.desk, light.strip']],
+    wled: [['base', 'WLED address', 'http://192.168.1.50']],
+    govee: [['apiKey', 'Govee API key', ''], ['devices', 'Devices (sku/device, comma separated)', 'H6159/AB:CD:EF:12:34:56:78:90']],
+  };
+  const lights = async () => (await chrome.storage.local.get(LKEY))[LKEY] || { devices: [] };
+  const fieldInputs = () => {
+    const type = $('lightType').value;
+    $('lightFields').replaceChildren(...FIELDS[type].map(([k, label, ph]) => {
+      const l = document.createElement('label'); l.className = 'row'; l.append(label + ' ');
+      const i = document.createElement('input'); i.id = `lf-${k}`; i.placeholder = ph; i.type = /token|apiKey/.test(k) ? 'password' : 'text'; i.autocomplete = 'off';
+      l.append(i); return l;
+    }));
+    if (type === 'hue') {
+      const b = document.createElement('button'); b.textContent = 'Pair with bridge'; b.type = 'button';
+      b.onclick = async () => {
+        const bridge = $('lf-bridge').value.trim().replace(/\/+$/, '');
+        if (!/^https?:\/\//.test(bridge)) return status('lightStatus', 'Enter the bridge address, e.g. https://192.168.1.20', 'err');
+        if (!(await chrome.permissions.request({ origins: [`${new URL(bridge).origin}/*`] }))) return status('lightStatus', 'Permission not granted', 'err');
+        const r = await chrome.runtime.sendMessage({ type: 'lights.pairHue', bridge });
+        if (r?.username) { $('lf-username').value = r.username; status('lightStatus', 'Paired. Press “Add device”.', 'ok'); } else status('lightStatus', r?.error || 'Pairing failed', 'err');
+      };
+      $('lightFields').append(b);
+    }
+  };
+  $('lightType').onchange = fieldInputs;
+  fieldInputs();
+  const renderLights = async () => {
+    const { devices } = await lights();
+    $('lightDevices').replaceChildren(...devices.map((d) => {
+      const row = document.createElement('div'); row.className = 'site';
+      const label = document.createElement('span'); label.textContent = `${{ hue: 'Hue', ha: 'Home Assistant', wled: 'WLED', govee: 'Govee' }[d.type]} — ${d.bridge || d.base || d.devices || ''}`;
+      const test = document.createElement('button'); test.textContent = 'Test';
+      test.onclick = async () => { const r = await chrome.runtime.sendMessage({ type: 'lights.apply', test: true, state: { on: true, rgb: [91, 140, 255], bri: 0.8, flash: true } }); const mine = r?.results?.find((x) => x.id === d.id); status('lightStatus', mine?.ok ? 'Sent — your light should flash blue.' : `Failed: ${mine?.error || r?.error}`, mine?.ok ? 'ok' : 'err'); };
+      const del = document.createElement('button'); del.textContent = 'Remove';
+      del.onclick = async () => { const cur = await lights(); cur.devices = cur.devices.filter((x) => x.id !== d.id); await chrome.storage.local.set({ [LKEY]: cur }); renderLights(); };
+      row.append(label, test, del); return row;
+    }));
+    if (!devices.length) $('lightDevices').textContent = 'No devices yet.';
+  };
+  $('addLight').onclick = async () => {
+    const type = $('lightType').value;
+    const dev = { id: `l${Date.now().toString(36)}`, type };
+    for (const [k] of FIELDS[type]) dev[k] = $(`lf-${k}`).value.trim();
+    const addr = dev.bridge || dev.base;
+    if (type !== 'govee' && !/^https?:\/\/[^/]+/.test(addr || '')) return status('lightStatus', 'Enter the device address (http:// or https://)', 'err');
+    if (type === 'hue' && !dev.username) return status('lightStatus', 'Press “Pair with bridge” first', 'err');
+    if (type === 'ha' && (!dev.token || !dev.entities)) return status('lightStatus', 'Home Assistant needs a token and at least one light entity', 'err');
+    if (type === 'govee' && (!dev.apiKey || !dev.devices)) return status('lightStatus', 'Govee needs an API key and device list', 'err');
+    const origin = type === 'govee' ? 'https://openapi.api.govee.com' : new URL(addr).origin;
+    if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }))) return status('lightStatus', 'Permission not granted', 'err');
+    const cur = await lights(); cur.devices.push(dev); await chrome.storage.local.set({ [LKEY]: cur });
+    status('lightStatus', 'Added. Press Test. (Hue over https: if Test fails, open the bridge address in a tab once and accept its certificate.)', 'ok');
+    renderLights();
+  };
+  renderLights();
+
   // Desktop notifications: optional permission, requested only when switched on.
   const notifyState = async () => {
     const s = await loadSettings();
@@ -121,8 +183,6 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     status('notifyStatus', on ? 'On. Sound events also notify while the chart tab is hidden (Sound must be on).' : 'Off.', 'ok');
   };
   notifyState();
-  };
-  renderSites();
 
   async function renderMedia() {
     const items = await listMedia();

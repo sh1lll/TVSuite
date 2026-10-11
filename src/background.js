@@ -4,6 +4,33 @@ import { journalStore } from './modules/journal/store.js';
 import { selectionToTradingView } from './modules/bridge/symbols.js';
 import { recordingsStore } from './core/recordings-store.js';
 import { SECRETS_KEY, sendDiscord, sendTelegram } from './share/send.js';
+import { SECRETS_KEY as LIGHTS_KEY, requestsFor, huePairRequest } from './lights/drivers.js';
+
+// Lights: identical states are skipped per device; Govee's cloud allows ~10 commands/min per device.
+const lastLight = new Map();
+async function applyLights(state, { test = false } = {}) {
+  const { [LIGHTS_KEY]: sec = {} } = await chrome.storage.local.get(LIGHTS_KEY);
+  const devices = (sec.devices || []).filter((d) => d.enabled !== false);
+  const results = [];
+  for (const dev of devices) {
+    const key = `${dev.type}:${dev.id}`;
+    const body = JSON.stringify(state);
+    const prev = lastLight.get(key);
+    if (!test && prev?.body === body) { results.push({ id: dev.id, skipped: 'same' }); continue; }
+    if (!test && dev.type === 'govee' && prev && Date.now() - prev.at < 13000 && !state.flash) { results.push({ id: dev.id, skipped: 'rate' }); continue; }
+    if (!test && dev.type === 'govee' && state.flash) { results.push({ id: dev.id, skipped: 'flash' }); continue; }
+    lastLight.set(key, { body, at: Date.now() });
+    try {
+      const opts = dev.type === 'govee' && dev.apiBase && allowLoopback() ? { base: dev.apiBase } : {};
+      for (const r of requestsFor(dev, state, opts)) {
+        const res = await fetch(r.url, { method: r.method, headers: r.headers, body: r.body });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }
+      results.push({ id: dev.id, ok: true });
+    } catch (err) { lastLight.delete(key); results.push({ id: dev.id, ok: false, error: err.message }); }
+  }
+  return results;
+}
 
 // The e2e suite runs a copy of the extension granted http://127.0.0.1/* so it can talk to local mock servers.
 const allowLoopback = () => (chrome.runtime.getManifest().host_permissions || []).includes('http://127.0.0.1/*');
@@ -70,6 +97,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg?.type === 'share.send') {
     share(msg.payload || {}).then((r) => sendResponse(r), (err) => sendResponse({ error: err.message }));
+    return true;
+  }
+  if (msg?.type === 'lights.apply') {
+    applyLights(msg.state || {}, { test: !!msg.test }).then((results) => sendResponse({ results }), (err) => sendResponse({ error: err.message }));
+    return true;
+  }
+  if (msg?.type === 'lights.pairHue') {
+    const r = huePairRequest({ bridge: msg.bridge });
+    fetch(r.url, { method: r.method, headers: r.headers, body: r.body }).then((x) => x.json()).then((j) => {
+      const ok = j?.[0]?.success?.username, err = j?.[0]?.error;
+      sendResponse(ok ? { username: ok } : { error: err?.type === 101 ? 'Press the button on the Hue bridge, then try again within 30 seconds' : err?.description || 'Unexpected reply from the bridge' });
+    }, (err) => sendResponse({ error: `${err.message} — open the bridge address in a tab once and accept its certificate` }));
     return true;
   }
   if (msg?.type === 'recordings.list') {

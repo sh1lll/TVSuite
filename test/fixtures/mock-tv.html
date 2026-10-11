@@ -93,6 +93,9 @@
   setInterval(newBar, 2000);
   legend();
   requestAnimationFrame(frame);
+  // Minimal stand-in for TradingView's page API (activeChart().setSymbol / setResolution).
+  let resolution = '15';
+  window.TradingViewApi = { activeChart: () => ({ setSymbol: (s) => window.mockTV.setSymbol(s.split(':').pop()), setResolution: (r) => { resolution = r; }, symbol: () => symbol, resolution: () => resolution }) };
   // Test hooks (main world).
   window.mockTV = {
     setVolatility(v) { vol = v; },

@@ -657,12 +657,11 @@ await check('linked tabs: a symbol seen on another platform tab opens on this ch
   const row = p.locator('.row[data-linked="topstepx.com"]');
   await row.waitFor();
   const own = await sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => Object.keys(x['bridge:seen'])));
-  await Promise.all([page.waitForURL(/symbol=CME_MINI%3ANQZ2026/), row.getByRole('button', { name: 'Open here' }).click()]);
+  await row.getByRole('button', { name: 'Open here' }).click();
   assert.ok(own.includes('topstepx.com'));
-  await page.waitForLoadState('domcontentloaded');
-  await waitFor(async () => (await layerData(page))?.state === 'running', { message: 'skin running after reload' });
-  const seen = await waitFor(() => sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => x['bridge:seen']['www.tradingview.com'])), { message: 'this tab published its symbol' });
-  assert.ok(seen.symbol);
+  // TradingView's chart API switches the symbol in place (no reload).
+  await waitFor(async () => (await page.locator('[data-name="legend-source-title"]').textContent()) === 'NQZ2026', { message: 'chart switched to NQZ2026' });
+  await waitFor(() => sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => x['bridge:seen']['www.tradingview.com']?.symbol === 'NQZ2026')), { message: 'this tab published its new symbol' });
 });
 
 console.log('\nRisk Guard');
@@ -729,7 +728,7 @@ await check('risk guard: reads P&L from the screen via the element picker', asyn
 });
 await check('journal capture with a P&L adds the trade to Risk Guard', async () => {
   const [sw] = context.serviceWorkers();
-  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.source = 'manual'; settings.risk.pdll = 0; settings.risk._meta = undefined; await chrome.storage.local.set({ settings }); });
+  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.source = 'manual'; settings.risk.pdll = 0; delete settings._meta; await chrome.storage.local.set({ settings }); });
   await sleep(600);
   await page.mouse.click(640, 380);
   await page.keyboard.press('Alt+Shift+J');
@@ -823,7 +822,7 @@ await check('mini chart window mirrors the chart, price and session, and keeps u
   const w = await waitFor(() => miniDoc('chart'), { message: 'mini chart window' });
   console.log(`      (opened as ${w.pip ? 'Document Picture-in-Picture' : 'pop-up fallback'})`);
   const a = await w.read((d) => ({ frames: +d.body.dataset.frames, sym: d.querySelector('.sym').textContent, px: d.querySelector('.px').textContent, foot: d.querySelector('.foot').textContent }));
-  assert.equal(a.sym, 'BTCUSD');
+  assert.equal(a.sym, await page.locator('[data-name="legend-source-title"]').textContent(), 'mini window shows the chart symbol');
   assert.match(a.px, /\d/);
   assert.match(a.foot, /session|opens|closes/i);
   await sleep(1200);
@@ -841,6 +840,63 @@ await check('mini player plays an image from my media library in a floating wind
   const w = await waitFor(() => miniDoc('player'), { message: 'player window' });
   await waitFor(() => w.read((d) => d.body.dataset.state === 'running'), { message: 'library media running in the player frame' });
   await w.read((d) => d.defaultView.close());
+});
+
+console.log('\nLights & voice');
+await check('room lighting: devices get the session colour, a flash on a fill, and red on a risk breach', async () => {
+  const opt = await context.newPage();
+  await opt.goto(`chrome-extension://${extensionId}/options.html#lights`);
+  await opt.selectOption('#lightType', 'wled');
+  await opt.fill('#lf-base', mock.base);
+  await opt.click('#addLight');
+  await opt.selectOption('#lightType', 'ha');
+  await opt.fill('#lf-base', mock.base); await opt.fill('#lf-token', 'test-token'); await opt.fill('#lf-entities', 'light.desk');
+  await opt.click('#addLight');
+  await opt.waitForFunction(() => document.querySelectorAll('#lightDevices .site').length === 2);
+  await opt.close();
+  await page.bringToFront();
+  mock.requests.length = 0;
+  const p = await openPanel(page, 'sound');
+  await p.locator('.subnav button[data-value="lights"]').first().click();
+  await p.locator('label.switch', { hasText: 'Room lighting' }).click();
+  // Base scene: session colour, or the fixed colour outside sessions.
+  const wled = await waitFor(() => mock.requests.find((r) => r.url === '/json/state'), { message: 'WLED scene' });
+  assert.equal(JSON.parse(wled.text).on, true);
+  const ha = mock.requests.find((r) => r.url === '/api/services/light/turn_on');
+  assert.equal(ha.headers.authorization, 'Bearer test-token');
+  assert.deepEqual(JSON.parse(ha.text).entity_id, ['light.desk']);
+  mock.requests.length = 0;
+  await page.evaluate(() => window.mockTV.toast('Order filled: Buy 1 BTCUSD at 63,512.00'));
+  const flash = await waitFor(() => mock.requests.find((r) => r.url === '/json/state' && /"col":\[\[34,197,94\]\]/.test(r.text)), { message: 'green flash on entry' });
+  assert.equal(JSON.parse(flash.text).transition, 0);
+  // Risk breach holds red (Risk Guard was set up earlier; a big loss trips the daily limit).
+  const sw = context.serviceWorkers()[0];
+  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); Object.assign(settings.risk, { enabled: true, startBalance: 50000, pdll: 100, onLoss: 'warn', source: 'manual' }); delete settings._meta; await chrome.storage.local.set({ settings }); });
+  await sleep(700);
+  const rp = await openPanel(page, 'risk');
+  await rp.locator('.subnav button[data-value="today"]').first().click();
+  await rp.locator('input[data-pnl-input]').fill('-500'); await rp.locator('input[data-pnl-input]').press('Enter');
+  await waitFor(() => mock.requests.find((r) => r.url === '/json/state' && /"col":\[\[242,54,69\]\]/.test(r.text)), { message: 'red on breach', timeout: 8000 });
+  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.pdll = 0; settings.lights.enabled = false; delete settings._meta; await chrome.storage.local.set({ settings }); });
+});
+await check('voice/typed commands: switch symbol + interval via the chart API, log a trade, answer P&L', async () => {
+  const p = await openPanel(page, 'sound');
+  await p.locator('.subnav button[data-value="voice"]').first().click();
+  const box = p.locator('input[data-command-box]');
+  await box.fill('show N Q five minute'); await box.press('Enter');
+  await waitFor(async () => (await page.locator('[data-name="legend-source-title"]').textContent()) === 'NQ1!', { message: 'symbol changed' });
+  assert.equal(await page.evaluate(() => window.TradingViewApi.activeChart().resolution()), '5');
+  await box.fill('log a loss of 120'); await box.press('Enter');
+  const sw = context.serviceWorkers()[0];
+  await waitFor(() => sw.evaluate(() => chrome.storage.local.get('risk:state').then((x) => x['risk:state'].trades.some((t) => t.pnl === -120))), { message: 'trade logged by voice' });
+  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.enabled = true; delete settings._meta; await chrome.storage.local.set({ settings }); });
+  await sleep(1500);
+  await (await openPanel(page, 'sound')).locator('.subnav button[data-value="voice"]').first().click();
+  await box.fill("what's my P&L"); await box.press('Enter');
+  await waitFor(async () => /^Today [−+]?\$/.test(await p.locator('[data-voice-reply]').textContent()), { message: 'P&L reply' }).catch(async (e) => { throw new Error(`${e.message}: reply was “${await p.locator('[data-voice-reply]').textContent()}”`); });
+  await box.fill('banana phone'); await box.press('Enter');
+  await waitFor(async () => /didn’t catch a command/.test(await p.locator('[data-voice-reply]').textContent()), { message: 'unknown command reply' });
+  await p.locator('.subnav button[data-value="sound"]').first().click();
 });
 
 await check('no uncaught TVSuite errors on the page', async () => {

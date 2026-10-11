@@ -92,7 +92,28 @@ export const DEFAULT_SETTINGS = {
     discord: { enabled: false, cards: true, journal: false, risk: false, recordings: false },
     telegram: { enabled: false, cards: true, journal: false, risk: false, recordings: false },
   },
-  lights: { enabled: false },
+  voice: {
+    enabled: false,             // opt-in: Chrome's recognition sends audio to Google unless on-device is available
+    mode: 'push',               // push (press the hotkey, say one command) | wake (listen for "suite …")
+    hotkey: 'Alt+Shift+V',
+    wakeWord: 'suite',
+    lang: 'en-US',
+    onDevice: true,             // use on-device recognition when Chrome offers it
+    onDeviceOnly: false,        // never fall back to cloud recognition
+    reply: true,                // speak the answer
+  },
+  lights: {
+    enabled: false,             // devices are set up in Options → Lights
+    brightness: 0.8,
+    base: 'session',            // session (session colour) | fixed | none (events only)
+    fixedColor: '#5b8cff',
+    offOutside: false,          // lights off when no session is open
+    events: {
+      tradeEntry: { on: true, color: '#22c55e' }, tradeExit: { on: true, color: '#5b8cff' }, alert: { on: true, color: '#f7a600' },
+      riskWarn: { on: true, color: '#f7a600' }, riskBreach: { on: true, color: '#f23645' }, riskTarget: { on: true, color: '#22c55e' },
+      calm: { on: false, color: '#f7a600' },
+    },
+  },
   bridge: {
     share: true,              // publish this tab's symbol to your other TVSuite tabs (local storage only)
     projectxRoots: {},        // user overrides: { CL: 'CLE' } for ProjectX/TopstepX contract ids

@@ -76,6 +76,19 @@
         const md = window.initData && window.initData.metaInfo;
         const u = window.user;
         detail = JSON.stringify({ username: (md && md.username) || (u && u.username) || null });
+      } else if (q.startsWith('{')) {
+        // Chart commands through TradingView's page API (undocumented; used by public userscripts). The content
+        // script falls back to a URL change when this reports ok:false.
+        const cmd = JSON.parse(q);
+        const api = window.TradingViewApi;
+        const chart = api && typeof api.activeChart === 'function' ? api.activeChart() : null;
+        if (cmd.cmd === 'setChart' && chart) {
+          if (cmd.symbol && typeof chart.setSymbol === 'function') chart.setSymbol(String(cmd.symbol).slice(0, 60));
+          if (cmd.interval && typeof chart.setResolution === 'function') chart.setResolution(String(cmd.interval).slice(0, 8));
+          detail = JSON.stringify({ ok: true });
+        } else if (cmd.cmd === 'chartInfo' && chart) {
+          detail = JSON.stringify({ symbol: typeof chart.symbol === 'function' ? chart.symbol() : null, interval: typeof chart.resolution === 'function' ? chart.resolution() : null });
+        } else detail = JSON.stringify({ ok: false });
       } else if (q === 'stats') {
         detail = JSON.stringify({ clears: window.__tvsuiteClears || 0, scope });
       }

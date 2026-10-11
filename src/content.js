@@ -34,6 +34,9 @@ const recordings = {
   open: (id) => chrome.runtime.sendMessage({ type: 'recordings.open', id }),
 };
 
+// Lights are driven by the background worker (it can reach your home network).
+const lightsSend = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, (res) => resolve(chrome.runtime.lastError ? { error: chrome.runtime.lastError.message } : res)));
+
 const ai = {
   generate: (prompt) => new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({ type: 'ai.generate', prompt }, (res) => {
@@ -50,5 +53,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
-const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal, notify, share, recordings }).catch((err) => console.error('[TVSuite] failed to start', err));
+const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal, notify, share, recordings, lightsSend }).catch((err) => console.error('[TVSuite] failed to start', err));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();

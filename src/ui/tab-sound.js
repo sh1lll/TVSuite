@@ -10,6 +10,7 @@ const encode = (snd) => (!snd || snd.kind === 'none' ? 'none' : snd.kind === 'sy
 
 export function soundTab(app) {
   const { getSettings, update, root, bus, sound, skins } = app;
+
   const c = () => getSettings().sound;
   const wrap = el('div');
   let statusEl;
@@ -167,9 +168,64 @@ export function soundTab(app) {
       app.openOptions ? el('div', { class: 'btns' }, button(cfg.notify ? 'Change in Options' : 'Turn on in Options', () => app.openOptions('notify'), 'sm')) : null);
   }
 
+  // ---- Lights (room lighting scenes; devices are set up in Options) ----
+  function lightsView() {
+    const L = getSettings().lights;
+    const set = (fn, again) => { update((st) => fn(st.lights)); if (again) render(); };
+    const color = (val, onChange, data) => { const i = el('input', { type: 'color', value: val, dataset: data || {}, style: { width: '38px', height: '26px', padding: 0, border: 0, background: 'none' } }); i.addEventListener('change', () => onChange(i.value)); return i; };
+    const EV = [['tradeEntry', 'Trade entered (flash)'], ['tradeExit', 'Trade closed (flash)'], ['alert', 'Alert / price level (flash)'], ['riskTarget', 'Daily target (flash)'], ['riskWarn', 'Risk warning (hold)'], ['riskBreach', 'Risk limit hit (hold)'], ['calm', 'Calm mode (hold)']];
+    return [
+      el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(247,166,0,.16), rgba(91,140,255,.1))' } },
+        toggle({ label: 'Room lighting', hint: 'Philips Hue, Home Assistant (Govee LAN, LIFX, Nanoleaf…), WLED, Govee cloud', checked: L.enabled, onChange: (v) => set((x) => { x.enabled = v; }, true) }),
+        el('div', { class: 'btns' }, app.openOptions ? button('Set up devices', () => app.openOptions('lights'), 'sm', { icon: 'sliders' }) : null,
+          button('Test', async () => { const r = await app.lights.test(L.fixedColor); const res = r?.results || []; toast(root, !res.length ? 'No devices yet — add them in Options' : res.every((x) => x.ok) ? 'Lights flashed' : `Failed: ${res.filter((x) => !x.ok).map((x) => x.error).join('; ')}`, !res.length || res.some((x) => !x.ok) ? 'warn' : 'ok', 4000); }, 'sm', { dataset: { lightsTest: '1' } }),
+          button('Off', () => app.lights.off(), 'sm'))),
+      L.enabled ? [
+        section('Base colour',
+          segmented({ value: L.base, options: [['session', 'Session colour'], ['fixed', 'Fixed'], ['none', 'Events only']], onChange: (v) => set((x) => { x.base = v; }, true) }),
+          L.base !== 'none' ? row('Colour', color(L.fixedColor, (v) => set((x) => { x.fixedColor = v; })), el('span', { class: 'note', style: { margin: 0 } }, L.base === 'session' ? 'used outside sessions' : '')) : null,
+          L.base === 'session' ? toggle({ label: 'Lights off outside sessions', checked: L.offOutside, onChange: (v) => set((x) => { x.offOutside = v; }) }) : null,
+          slider({ label: 'Brightness', value: L.brightness, min: 0.1, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%`, onInput: (v) => set((x) => { x.brightness = v; }) })),
+        section('Events', EV.map(([id, label]) => {
+          const on = el('input', { type: 'checkbox', class: 'sw', checked: L.events[id].on });
+          on.addEventListener('change', () => set((x) => { x.events[id].on = on.checked; }));
+          return el('div', { class: 'row', dataset: { lightEvent: id } }, el('span', { class: 'grow', style: { fontSize: '12px' } }, label), color(L.events[id].color, (v) => set((x) => { x.events[id].color = v; })), on);
+        }), el('div', { class: 'note' }, 'Govee’s cloud allows about 10 changes a minute per device, so Govee lights skip the quick flashes.')),
+      ] : null,
+    ];
+  }
+
+  // ---- Voice commands ----
+  function voiceView() {
+    const V = getSettings().voice;
+    const set = (fn, again) => { update((st) => fn(st.voice)); if (again) render(); };
+    const box = el('input', { type: 'text', placeholder: 'Type a command: show NQ 5 minute, log a loss of 200…', dataset: { commandBox: '1' } });
+    box.addEventListener('keydown', async (e) => { e.stopPropagation(); if (e.key === 'Enter' && box.value.trim()) { const t = box.value; box.value = ''; await app.voice.run(t); } });
+    const reply = el('div', { class: 'note', dataset: { voiceReply: '1' } }, lastReply || '');
+    return [
+      el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(154,107,255,.18), rgba(91,140,255,.1))' } },
+        toggle({ label: 'Voice commands', hint: app.voice.supported ? `Press ${V.hotkey} and speak. Chrome sends the audio to Google for recognition unless on-device recognition is available.` : 'This browser has no speech recognition — the command box still works', checked: V.enabled, onChange: (v) => set((x) => { x.enabled = v; }, true) }),
+        V.enabled && app.voice.supported ? el('div', { class: 'btns' }, button(app.voice.state().listening ? 'Listening… (stop)' : V.mode === 'wake' ? 'Start listening' : 'Speak a command', () => { app.voice.listen(); setTimeout(render, 300); }, 'primary', { icon: 'sound' })) : null),
+      section('Command box', el('div', { class: 'row' }, el('div', { class: 'grow' }, box)), reply,
+        el('div', { class: 'note' }, 'Works without a microphone too. Try: show N Q five minute · journal this · screenshot · start recording · log a loss of 200 · alert at 21500 · what’s my P&L · when does London open · next skin · mute.')),
+      V.enabled ? section('Listening',
+        row('Mode', segmented({ value: V.mode, options: [['push', 'Push to talk'], ['wake', `Wake word “${V.wakeWord}”`]], onChange: (v) => { app.voice.stop(); set((x) => { x.mode = v; }, true); } })),
+        toggle({ label: 'Prefer on-device recognition', hint: 'Chrome 139+ can recognise speech locally after a one-time download', checked: V.onDevice, onChange: (v) => set((x) => { x.onDevice = v; }, true) }),
+        V.onDevice ? toggle({ label: 'Never use cloud recognition', checked: V.onDeviceOnly, onChange: (v) => set((x) => { x.onDeviceOnly = v; }) }) : null,
+        toggle({ label: 'Speak the answer', checked: V.reply, onChange: (v) => set((x) => { x.reply = v; }) })) : null,
+    ];
+  }
+  let lastReply = '';
+  bus.on('voice:reply', (t) => { lastReply = t; const n = wrap.querySelector('[data-voice-reply]'); if (n) n.textContent = t; });
+
+  let view = getSettings().ui.soundView || 'sound';
+  const nav = segmented({ value: view, cls: 'subnav', options: [['sound', 'Sound', 'sound'], ['lights', 'Lights', 'sparkle'], ['voice', 'Voice', 'mic']], onChange: (v) => { view = v; update((st) => { st.ui.soundView = v; }, { silent: true }); render(); } });
+
   function render() {
+    if (view === 'lights') { setChildren(wrap, nav, el('div', { class: 'wide-labels' }, lightsView())); return; }
+    if (view === 'voice') { setChildren(wrap, nav, voiceView()); return; }
     const cfg = c();
-    setChildren(wrap, master(cfg), cfg.enabled ? [ambientSection(cfg), eventsSection(cfg), alertsSection(cfg), librarySection(cfg), notifySection(cfg), detectionSection(cfg)] : null);
+    setChildren(wrap, nav, master(cfg), cfg.enabled ? [ambientSection(cfg), eventsSection(cfg), alertsSection(cfg), librarySection(cfg), notifySection(cfg), detectionSection(cfg)] : null);
     paintStatus(sound.stats());
   }
   function paintStatus(st) {

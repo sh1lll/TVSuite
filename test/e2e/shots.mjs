@@ -35,6 +35,15 @@ await p.locator('input[data-sound-power]').check();
 await p.locator('label.switch', { hasText: 'Voice announcements' }).click();
 await snap('tab-sound');
 for (const [i, y] of [[1, 700], [2, 1400], [3, 2100]]) { await p.locator('.body').evaluate((b, v) => { b.scrollTop = v; }, y); await snap(`tab-sound-${i}`); }
+await p.locator('.subnav button[data-value="lights"]').first().click();
+await p.locator('label.switch', { hasText: 'Room lighting' }).click();
+await snap('tab-sound-lights');
+await p.locator('.subnav button[data-value="voice"]').first().click();
+await p.locator('label.switch', { hasText: 'Voice commands' }).click();
+await p.locator('input[data-command-box]').fill('when does New York open');
+await p.locator('input[data-command-box]').press('Enter');
+await snap('tab-sound-voice');
+await p.locator('.subnav button[data-value="sound"]').first().click();
 await p.locator('.tab[data-tab="risk"]').click();
 await snap('tab-risk-intro');
 await p.locator('button[data-risk-setup]').click();
