@@ -409,6 +409,16 @@ await check('per-symbol skin overrides the default and follows symbol changes', 
   await p.locator('.x').click();
 });
 
+await check('rotation shows a selected playlist skin, and the selected skin returns when rotation is off', async () => {
+  const p = await openPanel(page, 'skins');
+  await p.getByText('Rotate through selected skins').click();
+  await p.locator('.sec', { hasText: 'Rotation' }).locator('label', { hasText: 'Plasma (shader)' }).locator('input').check();
+  await waitFor(async () => (await layerData(page))?.skin === 'plasma', { timeout: 8000, message: 'rotation picks plasma' });
+  await p.getByText('Rotate through selected skins').click();
+  await waitFor(async () => (await layerData(page))?.skin === 'aurora', { timeout: 8000, message: 'back to selected skin' });
+  await p.locator('.x').click();
+});
+
 await check('stream mode (Alt+Shift+H) hides all TVSuite UI but keeps the skin', async () => {
   await page.mouse.click(700, 450);
   await page.keyboard.press('Alt+Shift+H');

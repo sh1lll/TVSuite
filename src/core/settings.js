@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
     dayStartTz: 'UTC',      // when "distance from the daily open" resets
     sessionThemes: false,
     perSymbol: {},          // { [symbol]: skin record } — wins over session themes and the default skin
+    playlist: { enabled: false, minutes: 15, ids: [] }, // rotate through these skin ids on the clock
   },
   sessions: {
     list: structuredClone(DEFAULT_SESSIONS),
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS = {
     concurrency: 4,
     keepSnapshots: 20,
     snapshotBeforeRestore: true,
+    autoBackup: { enabled: false, everyHours: 24 },
   },
   tools: {
     focusHotkey: 'Alt+Shift+F',

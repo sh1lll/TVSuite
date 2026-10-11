@@ -1,11 +1,10 @@
 // Templates tab: fetch, snapshot, diff, selective restore, import/export, factory reset.
 import { el, downloadJson, pickFile, setChildren } from '../core/dom.js';
-import { storage } from '../core/storage.js';
-import { section, row, select, button, chip, modal, confirmTyped, toast } from './kit.js';
+import { section, row, select, toggle, button, chip, modal, confirmTyped, toast } from './kit.js';
 import { createTvApi, toolLabel, TOOL_TYPES } from '../modules/templates/api.js';
-import { normalizeBackup, makeBackup, backupFilename, diff, planRestore, summarizePlan, countEntries, pruneSnapshots, entries } from '../modules/templates/model.js';
+import { normalizeBackup, makeBackup, backupFilename, diff, planRestore, summarizePlan, countEntries, entries } from '../modules/templates/model.js';
+import { loadSnapshots, writeSnapshots, saveSnapshot } from '../modules/templates/snapshots.js';
 
-const SNAP_KEY = 'tm:snapshots';
 
 export function templatesTab(app) {
   const { root, getSettings } = app;
@@ -20,26 +19,7 @@ export function templatesTab(app) {
     return ans?.username || 'user';
   }
 
-  // Snapshot list is cached in memory; storage is read once and written on change.
-  let snapCache = null;
-  async function loadSnapshots() {
-    if (!snapCache) snapCache = (await storage.get(SNAP_KEY, [])) || [];
-    return snapCache;
-  }
-  async function writeSnapshots(list) {
-    await storage.setStrict(SNAP_KEY, list);
-    snapCache = list;
-  }
-  // Throws unless the snapshot is verifiably persisted — destructive actions depend on it.
-  async function saveSnapshot(data, reason) {
-    const list = await loadSnapshots();
-    const snap = { id: `s${Date.now().toString(36)}`, createdAt: Date.now(), reason, user: await username(), counts: countEntries(data), data: { THEMES: data.THEMES, TOOLS: data.TOOLS } };
-    const next = pruneSnapshots([snap, ...list], getSettings().templates.keepSnapshots);
-    try { await writeSnapshots(next); } catch (err) { throw new Error(`Safety snapshot could not be saved (${err.message}). Nothing was changed.`); }
-    const back = (await storage.get(SNAP_KEY, [])) || [];
-    if (!back.some((x) => x.id === snap.id)) throw new Error('Safety snapshot could not be verified in storage. Nothing was changed.');
-    return snap;
-  }
+  const saveSnap = async (data, reason) => saveSnapshot(data, { reason, user: await username(), keep: getSettings().templates.keepSnapshots });
 
   function setMsg(msg, kind = '') { state.msg = msg; state.msgKind = kind; render(); }
 
@@ -73,7 +53,7 @@ export function templatesTab(app) {
     }),
     snapshot: () => busy('Taking snapshot…', async () => {
       if (!state.live) await fetchLive();
-      const snap = await saveSnapshot(state.live, 'manual');
+      const snap = await saveSnap(state.live, 'manual');
       setMsg(`Snapshot saved (${snap.counts.total} items).`, 'ok');
     }),
     exportFile: async () => {
@@ -115,7 +95,7 @@ export function templatesTab(app) {
         actions: [{ label: 'Cancel', value: false }, { label: `Write ${sum.save} items`, value: true, variant: 'green' }],
       });
       if (!ok) { setMsg('Restore cancelled.'); return; }
-      if (getSettings().templates.snapshotBeforeRestore) await saveSnapshot(state.live, 'before restore');
+      if (getSettings().templates.snapshotBeforeRestore) await saveSnap(state.live, 'before restore');
       const writes = ops.filter((o) => o.op === 'save');
       let done = 0, failed = 0;
       for (const o of writes) {
@@ -134,7 +114,7 @@ export function templatesTab(app) {
       busy('Snapshotting before reset…', async () => {
         const res = await fetchLive();
         if (res.errors.length) throw new Error('Some templates could not be read, so the safety snapshot would be incomplete. Reset aborted.');
-        await saveSnapshot(state.live, 'before factory reset');
+        await saveSnap(state.live, 'before factory reset');
         const all = entries(state.live);
         let done = 0;
         for (const e of all) {
@@ -214,11 +194,16 @@ export function templatesTab(app) {
         select({ label: 'If name exists', value: state.strategy, options: [['overwrite', 'Overwrite'], ['skip', 'Keep existing (skip)'], ['rename', 'Save as "name (restored)"']], onChange: (v) => { state.strategy = v; } }),
         el('div', { class: 'btns' }, button('Compare with live', actions.compare, '', dis), button('Restore to TradingView…', actions.restore, 'green', dis))) : null,
       snaps,
+      section('Automatic backup',
+        toggle({ label: 'Snapshot my templates automatically while a chart is open', checked: getSettings().templates.autoBackup.enabled, onChange: (v) => app.update((st) => { st.templates.autoBackup.enabled = v; }) }),
+        select({ label: 'Every', value: String(getSettings().templates.autoBackup.everyHours), options: [['6', '6 hours'], ['24', 'day'], ['168', 'week']], onChange: (v) => app.update((st) => { st.templates.autoBackup.everyHours = +v; }) }),
+        el('div', { class: 'note' }, 'Read-only: fetches and stores a snapshot; skips unchanged ones. Keeps the newest ' + getSettings().templates.keepSnapshots + ' snapshots.')),
       section('Danger zone', button('Factory reset — delete all templates & themes…', actions.factoryReset, 'danger', dis)),
       el('div', { class: 'note' }, 'Uses TradingView\'s own (undocumented) web endpoints with your session, from this tab. Compatible with victornpb/vngbh backup files.'),
     );
   }
 
+  const unsub = app.bus.on('templates:auto', (r) => { setMsg(`Automatic backup saved (${r.counts.total} items).`, 'ok'); });
   render();
-  return { el: wrap, render };
+  return { el: wrap, render, dispose: unsub };
 }

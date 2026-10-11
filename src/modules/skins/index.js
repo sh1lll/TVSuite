@@ -184,20 +184,32 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
   function sessionSkinFor(sessId) {
     if (!sessId) return null;
     const sess = getSettings().sessions.list.find((x) => x.id === sessId);
-    const skinId = sess?.skin;
-    if (!skinId) return null;
-    const lib = s().library.find((x) => x.id === skinId);
-    if (lib) return lib;
-    const b = builtins.get(skinId);
-    return b ? { kind: 'builtin', base: b.id, id: b.id, name: b.name } : null;
+    return recordFor(sess?.skin);
   }
 
   // The skin record to show, without per-skin param overrides (those travel as 'params' messages so
   // dragging a slider tweaks the live renderer instead of spawning a new one).
+  function recordFor(id) {
+    if (!id) return null;
+    const lib = s().library.find((x) => x.id === id);
+    if (lib) return lib;
+    const b = builtins.get(id);
+    return b ? { kind: 'builtin', base: b.id, id: b.id, name: b.name } : null;
+  }
+
+  // Playlist position comes from the clock, so every tab shows the same skin and nothing needs saving.
+  function playlistSkin(now = Date.now()) {
+    const pl = s().playlist;
+    if (!pl?.enabled) return null;
+    const ids = (pl.ids || []).filter((id) => recordFor(id));
+    if (!ids.length) return null;
+    return recordFor(ids[Math.floor(now / (Math.max(1, pl.minutes) * 60000)) % ids.length]);
+  }
+
   function baseSkin() {
     const cfg = s();
     const pinned = symbol && cfg.perSymbol?.[symbol];
-    return pinned || (cfg.sessionThemes && sessionSkinFor(lastSession)) || cfg.active || null;
+    return pinned || (cfg.sessionThemes && sessionSkinFor(lastSession)) || playlistSkin() || cfg.active || null;
   }
   function overridesFor(skin) { return skin ? s().params?.[skin.id || skin.base] || null : null; }
   function currentSkin() {
@@ -263,6 +275,7 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
   }
 
   function sessionTick() {
+    if (s().playlist?.enabled && s().enabled) pushAll(); // rotation boundary (pushAll is a no-op if unchanged)
     const all = getSettings().sessions.list;
     const sess = activeSession(all, new Date());
     const id = sess?.id ?? null;

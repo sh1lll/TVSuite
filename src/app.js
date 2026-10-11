@@ -12,6 +12,8 @@ import { createFocus } from './modules/tools/focus.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
+import { maybeAutoBackup } from './modules/templates/snapshots.js';
+import { createTvApi } from './modules/templates/api.js';
 import { WORKER_SOURCE } from 'tvsuite:worker-source';
 
 export const VERSION = '0.1.0';
@@ -63,6 +65,18 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   const panel = await createPanel(app);
   createHud(app);
   setupJournalCapture(app);
+
+  // Scheduled template backup (read-only), checked shortly after load and then hourly while a chart is open.
+  if (adapter.features?.templates) {
+    const runAuto = async () => {
+      try {
+        const res = await maybeAutoBackup({ api: createTvApi(), settings, user: (await queryMain('user'))?.username || 'user' });
+        if (res.saved) bus.emit('templates:auto', res);
+      } catch (err) { console.warn('[TVSuite] auto-backup failed:', err.message); }
+    };
+    setTimeout(runAuto, 30000);
+    setInterval(runAuto, 3600e3);
+  }
 
   // Settings changed elsewhere (popup, options page, another tab).
   storage.watch(SETTINGS_KEY, (v) => {

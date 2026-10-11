@@ -26,7 +26,7 @@ _Last updated: 2026-10-11 (session 1)_
 - ✅ Skin packs: schema, validation, `TVSKIN1.` fragment links, trust prompt; ✅ gallery (bundled + remote index)
 - ✅ AI generation: Anthropic SDK (`claude-opus-5-5`, JSON schema output, refusal fallback) or OpenAI-compatible
 - ✅ My media: own MP4/WebM/MOV/GIF/PNG/JPG/WebP/AVIF stored in extension IndexedDB, played by the extension-origin media frame
-- ⏳ Skin playlists / rotation; per-chart layers in multi-chart layouts; `iChannel` textures for shaders; volume-reactive input
+- ✅ Skin rotation (clock-derived, consistent across tabs) · ⏳ per-chart layers in multi-chart layouts; `iChannel` textures for shaders; volume-reactive input
 - ⏳ Shader/canvas editor with live preview (options page)
 
 ### Measured skin cost (JS per frame inside the worker, headless Chromium, no GPU)
@@ -46,7 +46,7 @@ _Last updated: 2026-10-11 (session 1)_
 - ✅ Snapshot history, diff vs live, restore with overwrite/skip/rename, and a summary confirmation
 - ✅ Auto-snapshot before restore and reset; reset aborts if the snapshot would be incomplete; typed `DELETE`
 - ✅ Interop with the victornpb/vngbh backup format
-- ⏳ Scheduled auto-backup
+- ✅ Scheduled auto-backup (read-only, skips unchanged, claims the slot so parallel tabs don't duplicate)
 - 🧪 Indicator templates, chart layouts, watchlists, alerts (endpoints not mapped)
 
 ## Phase 4 — Trader tools
@@ -64,8 +64,8 @@ _Last updated: 2026-10-11 (session 1)_
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 59 unit tests
-- `npm run e2e`: 31 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 60 unit tests
+- `npm run e2e`: 32 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓

@@ -118,3 +118,23 @@ test('api save/remove round trip and auth errors', async () => {
   const denied = createTvApi({ origin: 'https://x', fetchImpl: async () => ({ ok: false, status: 403, json: async () => ({}) }), retries: 0 });
   await assert.rejects(denied.fetchAll(), /Not signed in/);
 });
+
+test('maybeAutoBackup: due/skip/unchanged logic (localStorage host)', async () => {
+  const store = new Map();
+  globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  const { maybeAutoBackup, loadSnapshots, invalidateSnapshots } = await import('../../src/modules/templates/snapshots.js');
+  const data = { THEMES: { A: { x: 1 } }, TOOLS: {} };
+  const api = { calls: 0, async fetchAll() { this.calls++; return { ...structuredClone(data), errors: [] }; } };
+  const settings = { templates: { autoBackup: { enabled: true, everyHours: 24 }, keepSnapshots: 5 } };
+  assert.deepEqual(await maybeAutoBackup({ api, settings: { templates: { autoBackup: { enabled: false } } } }), { skipped: 'disabled' });
+  const r1 = await maybeAutoBackup({ api, settings, now: 1e12 });
+  assert.ok(r1.saved);
+  assert.deepEqual(await maybeAutoBackup({ api, settings, now: 1e12 + 3600e3 }), { skipped: 'not due' });
+  assert.deepEqual(await maybeAutoBackup({ api, settings, now: 1e12 + 25 * 3600e3 }), { skipped: 'unchanged' });
+  data.THEMES.B = { y: 2 };
+  const r2 = await maybeAutoBackup({ api, settings, now: 1e12 + 50 * 3600e3 });
+  assert.ok(r2.saved);
+  invalidateSnapshots();
+  assert.equal((await loadSnapshots()).length, 2);
+  delete globalThis.localStorage;
+});

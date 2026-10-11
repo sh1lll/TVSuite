@@ -205,6 +205,17 @@ export function skinsTab(app) {
             button(`Use current skin on ${sym}`, () => { update((st) => { st.skins.perSymbol[sym] = st.skins.active; }); render(); }, 'sm'),
             pinned ? button('Unpin', () => { update((st) => { delete st.skins.perSymbol[sym]; }); render(); }, 'sm') : null));
       })(),
+      section('Rotation',
+        toggle({ label: 'Rotate through selected skins', checked: cfg.playlist.enabled, onChange: (v) => { update((st) => { st.skins.playlist.enabled = v; }); render(); } }),
+        cfg.playlist.enabled ? [
+          select({ label: 'Every', value: String(cfg.playlist.minutes), options: [['5', '5 min'], ['15', '15 min'], ['30', '30 min'], ['60', '1 hour'], ['240', '4 hours']], onChange: (v) => update((st) => { st.skins.playlist.minutes = +v; }) }),
+          el('div', { class: 'list', style: { maxHeight: '140px' } }, [...BUILTIN_CANVAS, ...BUILTIN_SHADERS, ...cfg.library].map((sk) => {
+            const cb = el('input', { type: 'checkbox', checked: cfg.playlist.ids.includes(sk.id) });
+            cb.addEventListener('change', () => update((st) => { const ids = new Set(st.skins.playlist.ids); if (cb.checked) ids.add(sk.id); else ids.delete(sk.id); st.skins.playlist.ids = [...ids]; }));
+            return el('label', {}, cb, el('span', { class: 'nm' }, sk.name));
+          })),
+          el('div', { class: 'note' }, 'Order: pinned symbol skin › session theme › rotation › selected skin.'),
+        ] : null),
       section('Session themes',
         toggle({ label: 'Switch skins at Tokyo / London / New York opens (clock only)', checked: cfg.sessionThemes, onChange: (v) => update((st) => { st.skins.sessionThemes = v; }) }),
         el('div', { class: 'note' }, 'Pick each session\'s skin in the Sessions tab.')),
