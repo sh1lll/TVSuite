@@ -42,8 +42,10 @@ export function bridgeTab(app) {
       copy.addEventListener('click', async () => { await copyText(value); toast(root, `Copied ${value}`); });
       return el('div', { class: 'row', style: { padding: '0 10px', opacity: value ? 1 : 0.45 }, dataset: { platform: r.id }, title: r.note || '' },
         el('span', { style: { flex: '0 0 150px', fontSize: '12px' } }, r.name),
-        el('code', { class: 'grow', style: { fontSize: '12.5px', userSelect: 'all' } }, value || '—'),
-        est ? chip('front month?', 'warn') : null, r.unverified && value ? chip('unverified', 'warn') : null, copy);
+        el('div', { class: 'grow', style: { minWidth: 0, padding: '5px 0' } },
+          el('code', { style: { fontSize: '12.5px', userSelect: 'all', wordBreak: 'break-all' } }, value || '—'),
+          est || (r.unverified && value) ? el('div', { style: { marginTop: '2px' } }, est ? chip('front month?', 'warn') : null, r.unverified && value ? chip('unverified', 'warn') : null) : null),
+        copy);
     });
     const links = openLinks(c).map((l) => button(l.label, () => (l.id === 'tradingview' ? openOnTradingView(formatSymbol(c, 'tradingview')) : window.open(l.url, '_blank', 'noopener')), 'sm', { dataset: { open: l.id } }));
     setChildren(table,

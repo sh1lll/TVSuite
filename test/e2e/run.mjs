@@ -63,7 +63,7 @@ async function openPanel(page, tab) {
 }
 
 console.log(`Chromium: ${CHROME}`);
-const { context, extensionId } = await launchWithExtension({ args: ['--autoplay-policy=no-user-gesture-required'] });
+const { context, extensionId } = await launchWithExtension({ args: ['--autoplay-policy=no-user-gesture-required', '--disable-features=WebRtcHideLocalIpsWithMdns'] });
 const backend = makeBackend();
 await routeTradingView(context, backend);
 page = await context.newPage();
@@ -912,6 +912,67 @@ await check('voice/typed commands: switch symbol + interval via the chart API, l
   await box.fill('banana phone'); await box.press('Enter');
   await waitFor(async () => /didn’t catch a command/.test(await p.locator('[data-voice-reply]').textContent()), { message: 'unknown command reply' });
   await p.locator('.subnav button[data-value="sound"]').first().click();
+});
+
+console.log('\nCo-watch');
+await check('two chart tabs with panels open on different tabs don’t keep re-saving settings at each other', async () => {
+  const b = await context.newPage();
+  await b.goto('https://www.tradingview.com/chart/second/');
+  try { await openPanel(b, 'risk'); }
+  catch (err) {
+    const info = await b.evaluate(() => { const host = document.getElementById('tvsuite-panel-host'); const t = host?.shadowRoot?.querySelector('.tab[data-tab="risk"]'); const r = t?.getBoundingClientRect(); const hit = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null; return { r: r && [r.x, r.y, r.width, r.height], hit: hit && `${hit.tagName}#${hit.id}`, block: !!document.getElementById('tvsuite-block-host'), vis: document.visibilityState }; });
+    throw new Error(`${err.message.split('\n')[0]} :: ${JSON.stringify(info)}`);
+  }
+  await page.bringToFront();
+  await openPanel(page, 'capture');
+  const sw = context.serviceWorkers()[0];
+  await sleep(1500);
+  const writes = await sw.evaluate(() => new Promise((res) => { let n = 0; const f = (c) => { if (c.settings) n++; }; chrome.storage.onChanged.addListener(f); setTimeout(() => { chrome.storage.onChanged.removeListener(f); res(n); }, 4000); }));
+  assert.ok(writes <= 1, `${writes} settings writes in 4 s while idle`);
+  assert.equal(await panel(b).locator('.tab.on').getAttribute('data-tab'), 'risk', 'each tab keeps its own panel tab');
+  await b.close();
+});
+await check('co-watch: two charts connect by copy-paste codes, follow symbols, chat and ping', async () => {
+  const b = await context.newPage();
+  await b.goto('https://www.tradingview.com/chart/partner/');
+  const cw = async (pg) => {
+    const p = await openPanel(pg, 'bridge');
+    for (let i = 0; i < 3 && !(await p.locator('[data-cowatch-state]').count()); i++) { await p.locator('.subnav button[data-value="cowatch"]').first().click(); await sleep(150); }
+    return p;
+  };
+  let pa = await cw(page);
+  await pa.locator('label.switch', { hasText: 'Use a public STUN server' }).click(); // loopback test: no STUN
+  await sleep(500);
+  await pa.locator('button[data-cowatch-host]').click();
+  const offer = await waitFor(async () => (await pa.locator('textarea[data-cowatch-code]').inputValue().catch(() => '')) || null, { message: 'offer code', timeout: 10000 });
+  assert.match(offer, /^TVSC1\./);
+  await b.bringToFront();
+  const pb = await cw(b);
+  await pb.locator('textarea[data-cowatch-paste="join"]').fill(offer);
+  await pb.locator('button[data-cowatch-go="join"]').click();
+  const answer = await waitFor(async () => (await pb.locator('textarea[data-cowatch-code]').inputValue().catch(() => '')) || null, { message: 'answer code', timeout: 10000 });
+  await page.bringToFront();
+  pa = await cw(page);
+  await pa.locator('textarea[data-cowatch-paste="accept"]').fill(answer);
+  await pa.locator('button[data-cowatch-go="accept"]').click();
+  await waitFor(async () => (await pa.locator('[data-cowatch-state]').getAttribute('data-cowatch-state')) === 'connected', { message: 'A connected', timeout: 10000 });
+  await waitFor(async () => (await (await cw(b)).locator('[data-cowatch-state]').getAttribute('data-cowatch-state')) === 'connected', { message: 'B connected', timeout: 10000 });
+  // A switches symbol → B follows through the chart API.
+  await page.evaluate(() => window.mockTV.setSymbol('ETHUSD'));
+  await waitFor(async () => (await b.locator('[data-name="legend-source-title"]').textContent()) === 'ETHUSD', { message: 'B followed A to ETHUSD', timeout: 8000 });
+  // Chat B → A
+  const pb2 = await cw(b);
+  await pb2.locator('input[data-cowatch-msg]').fill('hi from B');
+  await pb2.locator('input[data-cowatch-msg]').press('Enter');
+  pa = await cw(page);
+  await waitFor(async () => /hi from B/.test(await pa.locator('[data-cowatch-log]').textContent()), { message: 'chat arrives' });
+  // Ping A → B
+  await pa.locator('button[data-cowatch-ping]').click();
+  await waitFor(async () => /👀/.test(await (await cw(b)).locator('[data-cowatch-log]').textContent()), { message: 'ping arrives' });
+  await pa.getByRole('button', { name: 'Leave' }).click();
+  await waitFor(async () => (await (await cw(b)).locator('[data-cowatch-state]').getAttribute('data-cowatch-state')) === 'idle', { message: 'B sees the session end' });
+  await b.close();
+  await page.bringToFront();
 });
 
 await check('no uncaught TVSuite errors on the page', async () => {

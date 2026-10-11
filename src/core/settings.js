@@ -114,6 +114,7 @@ export const DEFAULT_SETTINGS = {
       calm: { on: false, color: '#f7a600' },
     },
   },
+  cowatch: { name: '', stun: true, follow: true, share: true },
   bridge: {
     share: true,              // publish this tab's symbol to your other TVSuite tabs (local storage only)
     projectxRoots: {},        // user overrides: { CL: 'CLE' } for ProjectX/TopstepX contract ids

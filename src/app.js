@@ -19,6 +19,7 @@ import { setupCapture } from './ui/capture.js';
 import { createMini } from './modules/capture/mini.js';
 import { createLights } from './modules/lights/index.js';
 import { createVoice } from './modules/voice/index.js';
+import { createCowatch } from './modules/cowatch/index.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -43,6 +44,8 @@ function queryMain(q) {
     setTimeout(() => { if (!answered) { document.removeEventListener('tvsuite:answer', onAnswer); resolve(null); } }, 200);
   });
 }
+
+const VIEW_KEYS = ['tab', 'panelOpen', 'skinsView', 'riskView', 'captureView', 'soundView', 'bridgeView'];
 
 export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, notify = null, share = null, recordings = null, lightsSend = null, forceInline = false } = {}) {
   if (window.__TVSUITE__) return window.__TVSUITE__;
@@ -101,6 +104,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   app.mini = createMini({ adapter, getSettings: () => settings, bus, risk: app.risk, recorder: app.recorder, sound, symbol: () => skins.symbol() });
   app.lights = createLights({ getSettings: () => settings, bus, risk: app.risk, send: lightsSend });
   app.voice = createVoice(app);
+  app.cowatch = createCowatch(app);
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   await skins.start();
   sound.start();
@@ -127,9 +131,14 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   storage.watch(SETTINGS_KEY, (v) => {
     // Our own saves echo back through storage events; only react to writes from other contexts.
     if (!v || isOwnWrite(v)) return;
-    const changedUi = stableStringify({ ...v, _meta: 0 }) !== stableStringify({ ...settings, _meta: 0 });
+    // Which panel tab/sub-view is open is per tab: another tab's view must neither re-render this one nor
+    // overwrite it (two open panels would otherwise keep re-saving at each other).
+    const strip = (x) => ({ ...x, _meta: 0, ui: { ...x.ui, ...Object.fromEntries(VIEW_KEYS.map((k) => [k, 0])) } });
+    const changed = stableStringify(strip(v)) !== stableStringify(strip(settings));
+    const mine = Object.fromEntries(VIEW_KEYS.map((k) => [k, settings.ui[k]]));
     settings = withDefaults(DEFAULT_SETTINGS, v);
-    if (!changedUi) return;
+    Object.assign(settings.ui, mine);
+    if (!changed) return;
     skins.update();
     sound.update();
     panel.rerender();
