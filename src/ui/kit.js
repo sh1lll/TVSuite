@@ -148,3 +148,9 @@ export function copyText(text) {
     return ok;
   }
 }
+
+// Two-column key/value grid. Each item gets its own element: bare text nodes would merge into a
+// single anonymous grid cell and render as one run-on line.
+export function kv(...items) {
+  return el('div', { class: 'kv' }, items.flat().map((x) => (x instanceof Node ? x : el('span', {}, x))));
+}

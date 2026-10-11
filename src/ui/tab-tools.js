@@ -1,6 +1,6 @@
 // Tools tab: position-size calculator and focus mode.
 import { el, setChildren } from '../core/dom.js';
-import { section, row, select, toggle, button, copyText, toast } from './kit.js';
+import { section, row, select, toggle, button, copyText, toast, kv } from './kit.js';
 import { positionSize } from '../modules/tools/risk.js';
 
 export function toolsTab(app) {
@@ -24,7 +24,7 @@ export function toolsTab(app) {
     setChildren(out, 
       el('div', { class: 'row' }, el('span', { class: 'big' }, `${fmt(r.size, 6)} ${r.unitLabel}`), el('span', { class: 'chip ' + (r.side === 'long' ? 'ok' : 'err') }, r.side),
         button('Copy', async () => { await copyText(String(r.size)); toast(root, 'Size copied'); }, 'sm')),
-      el('div', { class: 'kv' },
+      kv(
         'Risk budget', fmt(r.riskAmount), 'Actual risk', fmt(r.actualRisk), 'Stop distance', `${fmt(r.distance, 6)}${r.pips != null ? ` (${fmt(r.pips, 1)} pips)` : ''}`,
         'Notional', fmt(r.notional), 'Leverage', `${fmt(r.leverage, 2)}×`,
         ...r.targets.flatMap((t) => [`${t.r}R target`, fmt(t.price, 6)])));

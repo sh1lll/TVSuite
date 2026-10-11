@@ -263,6 +263,8 @@ await check('snapshot, diff against live, and restore with rename strategy', asy
   assert.equal(await p.locator('.list .chip').count(), 2, 'changed + added badges');
   await p.locator('select').first().selectOption('rename');
   await p.getByRole('button', { name: 'Restore to TradingView…' }).click();
+  // Summary grid renders as separate label/value cells (regression: run-on text).
+  assert.equal(await p.locator('.modal .kv > span').count(), 12);
   await p.getByRole('button', { name: /Write 2 items/ }).click();
   await waitFor(async () => /Restored 2 items/.test(await p.locator('.note').first().textContent()), { message: 'restored' });
   assert.deepEqual(backend.THEMES.Paper, { 'paneProperties.background': '#ffffff' }, 'missing theme restored under its name');

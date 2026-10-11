@@ -1,6 +1,6 @@
 // Templates tab: fetch, snapshot, diff, selective restore, import/export, factory reset.
 import { el, downloadJson, pickFile, setChildren } from '../core/dom.js';
-import { section, row, select, toggle, button, chip, modal, confirmTyped, toast } from './kit.js';
+import { section, row, select, toggle, button, chip, modal, confirmTyped, toast, kv } from './kit.js';
 import { createTvApi, toolLabel, TOOL_TYPES } from '../modules/templates/api.js';
 import { normalizeBackup, makeBackup, backupFilename, diff, planRestore, summarizePlan, countEntries, entries } from '../modules/templates/model.js';
 import { loadSnapshots, writeSnapshots, saveSnapshot } from '../modules/templates/snapshots.js';
@@ -91,7 +91,7 @@ export function templatesTab(app) {
       if (!sum.save) { setMsg(`Nothing to write (${sum.unchanged} unchanged, ${sum.skip} skipped).`, 'ok'); return; }
       const ok = await modal(root, {
         title: 'Restore to TradingView?',
-        body: el('div', { class: 'kv' }, 'Will save', String(sum.save), 'Overwrite', String(sum.overwrite), 'Renamed', String(sum.renamed), 'Skipped', String(sum.skip), 'Unchanged', String(sum.unchanged), 'Safety', getSettings().templates.snapshotBeforeRestore ? 'snapshot first' : 'no snapshot'),
+        body: kv( 'Will save', String(sum.save), 'Overwrite', String(sum.overwrite), 'Renamed', String(sum.renamed), 'Skipped', String(sum.skip), 'Unchanged', String(sum.unchanged), 'Safety', getSettings().templates.snapshotBeforeRestore ? 'snapshot first' : 'no snapshot'),
         actions: [{ label: 'Cancel', value: false }, { label: `Write ${sum.save} items`, value: true, variant: 'green' }],
       });
       if (!ok) { setMsg('Restore cancelled.'); return; }

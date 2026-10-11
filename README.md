@@ -90,6 +90,7 @@ All skin code runs in a Worker with an OffscreenCanvas, inside an opaque-origin 
 npm test        # unit tests (node:test)
 npm run e2e     # builds, then drives real Chromium + the extension against a mock TradingView page
 npm run watch   # rebuild on change
+npm run demo    # records a captioned demo video + stills to test/e2e/out/demo/
 ```
 
 The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on the real `https://www.tradingview.com/chart/` origin through request interception. Screenshots are written to `test/e2e/out/`.

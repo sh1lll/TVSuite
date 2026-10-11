@@ -1,6 +1,6 @@
 // About / settings tab: hotkeys, privacy, diagnostics, settings export/import.
 import { el, downloadJson, pickFile, setChildren } from '../core/dom.js';
-import { section, row, button, toast } from './kit.js';
+import { section, row, button, toast, kv } from './kit.js';
 import { HOST } from '../core/env.js';
 import { DEFAULT_SETTINGS } from '../core/settings.js';
 import { withDefaults } from '../core/storage.js';
@@ -25,7 +25,7 @@ export function aboutTab(app) {
       section('Privacy',
         el('div', { class: 'note' }, 'TVSuite has no account, no telemetry and no servers. Settings, skins and template snapshots stay in this browser. Chart-reactive skins read price text already on screen, locally. The only network calls are (1) TradingView\'s own template endpoints when you use the Templates tab and (2) the AI provider you configure, when you press Generate.')),
       section('Diagnostics',
-        el('div', { class: 'kv' },
+        kv(
           'Host', HOST, 'Adapter', adapter.name, 'Skin state', `${st.state || 'off'}${st.mode ? ` (${st.mode})` : ''}`,
           'Background clears', String(stats?.clears ?? 'n/a'),
           'Chart canvases', String(q('.chart-markup-table canvas')), 'Legend found', q('[data-name="legend-series-item"]') ? 'yes' : 'no',
