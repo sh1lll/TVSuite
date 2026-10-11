@@ -38,6 +38,10 @@ const recordings = {
 const lightsSend = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, (res) => resolve(chrome.runtime.lastError ? { error: chrome.runtime.lastError.message } : res)));
 
 const ai = {
+  pine: (code, lang) => new Promise((resolve, reject) => chrome.runtime.sendMessage({ type: 'ai.pine', code, lang }, (res) => {
+    if (chrome.runtime.lastError || !res || res.error) return reject(new Error(res?.error || chrome.runtime.lastError?.message || 'No response from background worker'));
+    resolve(res);
+  })),
   generate: (prompt) => new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({ type: 'ai.generate', prompt }, (res) => {
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));

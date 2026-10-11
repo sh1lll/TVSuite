@@ -645,10 +645,25 @@ await check('bridge translates the chart symbol and any typed symbol for every p
 });
 await check('bridge watchlist converter: TradingView sections → NinjaTrader, skipped items reported', async () => {
   const p = await openPanel(page, 'bridge');
+  await p.locator('.subnav button[data-value="watchlists"]').first().click();
   await p.locator('textarea[data-wl-in]').fill('###FUT,CME_MINI:ESZ2026,CME_MINI:NQZ2026,###CRYPTO,BINANCE:BTCUSDT');
   await p.locator('.sec', { hasText: 'Watchlist converter' }).locator('select').selectOption('ninjatrader');
   assert.equal(await p.locator('textarea[data-wl-out]').inputValue(), 'ES 12-26\nNQ 12-26');
   assert.match(await p.locator('.sec', { hasText: 'Watchlist converter' }).textContent(), /1 skipped: BINANCE:BTCUSDT/);
+});
+await check('indicators: Python/JavaScript/Java examples translate to Pine v6; errors point at the line', async () => {
+  const p = await openPanel(page, 'bridge');
+  await p.locator('.subnav button[data-value="code"]').first().click();
+  for (const k of ['python', 'js', 'java']) {
+    await p.locator(`button[data-example="${k}"]`).click();
+    const pine = await p.locator('textarea[data-ind-out]').inputValue();
+    assert.match(pine, /^\/\/@version=6\n/, k);
+    assert.match(pine, /^indicator\(/m, k);
+  }
+  await p.locator('textarea[data-ind-src]').fill('x = 0\nwhile x < 3:\n    x = x + 1');
+  await p.locator('button[data-translate]').click();
+  assert.match(await p.locator('[data-ind-status]').textContent(), /Line 2: Loops aren’t translated/);
+  await p.locator('.subnav button[data-value="symbols"]').first().click();
 });
 await check('linked tabs: a symbol seen on another platform tab opens on this chart', async () => {
   const [sw] = context.serviceWorkers();

@@ -1,5 +1,5 @@
 // MV3 background service worker: AI generation (holds the API key) and custom-site registration.
-import { generateSkin, DEFAULT_AI } from './ai/providers.js';
+import { generateSkin, translateToPine, DEFAULT_AI } from './ai/providers.js';
 import { journalStore } from './modules/journal/store.js';
 import { selectionToTradingView } from './modules/bridge/symbols.js';
 import { recordingsStore } from './core/recordings-store.js';
@@ -77,6 +77,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then((cfg) => generateSkin(cfg, msg.prompt))
       .then((skin) => sendResponse({ skin }), (err) => sendResponse({ error: err.message || String(err) }));
     return true; // async response
+  }
+  if (msg?.type === 'ai.pine') {
+    aiConfig()
+      .then((cfg) => translateToPine(cfg, msg.code, msg.lang))
+      .then((r) => sendResponse(r), (err) => sendResponse({ error: err.message || String(err) }));
+    return true;
   }
   if (msg?.type === 'journal.add') {
     journalStore.add(msg.entry)

@@ -1,11 +1,12 @@
 // Bridge tab: translate the chart's symbol for other platforms, open it elsewhere, follow symbols from
 // other TVSuite tabs, and convert watchlists between platforms.
 import { el, setChildren, pickFile, downloadText } from '../core/dom.js';
-import { section, row, toggle, button, chip, toast, copyText, icon } from './kit.js';
+import { section, row, toggle, button, chip, toast, copyText, icon, segmented } from './kit.js';
 import { translateAll, parseSymbol, formatSymbol, frontMonth } from '../modules/bridge/symbols.js';
 import { openLinks } from '../modules/bridge/links.js';
 import { convertWatchlist, parseWatchlist, WATCHLIST_FORMATS } from '../modules/bridge/watchlists.js';
 import { IS_EXTENSION } from '../core/env.js';
+import { indicatorView } from './indicator-view.js';
 
 const stop = (node) => { node.addEventListener('keydown', (e) => e.stopPropagation()); return node; };
 const onTradingView = () => /(^|\.)tradingview\.com$/.test(location.hostname);
@@ -105,29 +106,36 @@ export function bridgeTab(app) {
     paintTable(); convert();
   });
 
+  let view = getSettings().ui.bridgeView || 'symbols';
+  const nav = segmented({ value: view, cls: 'subnav', options: [['symbols', 'Symbols', 'bridge'], ['watchlists', 'Lists', 'grid'], ['cowatch', 'Co-watch', 'link'], ['code', 'Indicators', 'code']], onChange: (v) => { view = v; update((st) => { st.ui.bridgeView = v; }, { silent: true }); render(); } });
+  let codeView = null;
   function render() {
     pxIn.value = pxText();
-    setChildren(wrap,
-      el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(54,197,240,.16), rgba(91,140,255,.12))' } },
-        el('div', { class: 'row', style: { margin: 0 } }, icon('bridge'),
-          el('div', { class: 'grow' }, el('div', { style: { fontWeight: 700, fontSize: '14px' } }, 'Platform Bridge'),
-            el('div', { class: 'note', style: { margin: 0 } }, 'TradingView ⇄ NinjaTrader, Tradovate, TopstepX, thinkorswim, Sierra, IBKR, MT, Yahoo, crypto exchanges')))),
-      section('Symbol', input, table),
+    const hero = el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(54,197,240,.16), rgba(91,140,255,.12))' } },
+      el('div', { class: 'row', style: { margin: 0 } }, icon('bridge'),
+        el('div', { class: 'grow' }, el('div', { style: { fontWeight: 700, fontSize: '14px' } }, 'Platform Bridge'),
+          el('div', { class: 'note', style: { margin: 0 } }, 'TradingView ⇄ NinjaTrader, Tradovate, TopstepX, thinkorswim, Sierra, IBKR, MT, Yahoo, crypto exchanges'))));
+    let content;
+    if (view === 'symbols') content = [hero, section('Symbol', input, table),
       section('Linked tabs',
         toggle({ label: 'Share this tab’s symbol', hint: 'Other tabs running TVSuite can jump to it. Stays in this browser.', checked: cfg().share, onChange: (v) => update((st) => { st.bridge.share = v; }, { silent: true }) }),
         linked),
-      section('Watchlist converter',
+      section('Platform details',
+        row('ProjectX roots', pxIn),
+        el('div', { class: 'note' }, 'ProjectX/TopstepX contract ids are confirmed for NQ (ENQ) and MNQ. ES (EP) and MES follow the same scheme but are unconfirmed, and other roots default to the CME root — check the id your platform shows and add it here.'),
+        el('div', { class: 'note' }, IS_EXTENSION ? 'Anywhere on the web: select a ticker, right-click → “Open in TradingView”.' : ''))];
+    else if (view === 'watchlists') content = [section('Watchlist converter',
         src,
         el('div', { class: 'btns' }, button('Open file…', async () => { const f = await pickFile('.txt,.csv,.tsv,text/plain,text/csv'); if (f) { src.value = f.text; convert(); } }, 'sm', { icon: 'upload' })),
         row('Convert to', fmtSel), out, report,
         el('div', { class: 'btns' },
           button('Copy', async () => { if (result?.text) { await copyText(result.text); toast(root, 'Watchlist copied'); } }, 'sm primary', { icon: 'copy' }),
-          button('Download', () => { if (result?.text) downloadText(`watchlist-${fmtSel.value}.${result.format.ext}`, result.text, result.format.ext === 'csv' ? 'text/csv' : 'text/plain'); }, 'sm', { icon: 'download' }))),
-      section('Platform details',
-        row('ProjectX roots', pxIn),
-        el('div', { class: 'note' }, 'ProjectX/TopstepX contract ids are confirmed for NQ (ENQ) and MNQ. ES (EP) and MES follow the same scheme but are unconfirmed, and other roots default to the CME root — check the id your platform shows and add it here.'),
-        el('div', { class: 'note' }, IS_EXTENSION ? 'Anywhere on the web: select a ticker, right-click → “Open in TradingView”.' : '')));
-    convert(); paintTable(); paintLinked();
+          button('Download', () => { if (result?.text) downloadText(`watchlist-${fmtSel.value}.${result.format.ext}`, result.text, result.format.ext === 'csv' ? 'text/csv' : 'text/plain'); }, 'sm', { icon: 'download' })))];
+    else if (view === 'cowatch') content = app.cowatch ? app.cowatch.view() : el('div', { class: 'note' }, 'Co-watch loads with TVSuite.');
+    else content = (codeView ||= indicatorView(app));
+    setChildren(wrap, nav, content);
+    if (view === 'symbols') { paintTable(); paintLinked(); }
+    if (view === 'watchlists') convert();
   }
   const unsubs = [bus.on('bridge:seen', paintLinked)];
   const timer = setInterval(() => { if (wrap.isConnected) syncFromChart(); }, 1000);
