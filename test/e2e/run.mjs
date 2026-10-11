@@ -79,12 +79,19 @@ await check('skin layer mounts via the sandboxed extension frame and runs', asyn
   assert.equal(d.z, '-1');
 });
 
-await check('under mode clears only the chart background fill (axes and snapshots keep theirs)', async () => {
+await check('under mode clears the chart and axis background fills (snapshots keep theirs); axes can be kept solid', async () => {
   await waitFor(() => page.evaluate(() => (window.__tvsuiteClears || 0) > 10), { message: 'background clears' });
-  const px = await page.evaluate(() => ({ pane: window.mockTV.pixel('main', 0.98, 0.02), axis: window.mockTV.pixel('axis', 0.5, 0.97), snap: window.mockTV.snapshot() }));
+  const read = () => page.evaluate(() => ({ pane: window.mockTV.pixel('main', 0.98, 0.02), axis: window.mockTV.pixel('axis', 0.5, 0.97), snap: window.mockTV.snapshot() }));
+  let px = await read();
   assert.equal(px.pane[3], 0, 'pane background is transparent');
-  assert.equal(px.axis[3], 255, 'axis background untouched');
+  assert.equal(px.axis[3], 0, 'axis background is transparent by default so the skin blends through');
   assert.deepEqual(px.snap, [19, 23, 34, 255], 'detached snapshot canvas keeps the real background');
+  const sw = context.serviceWorkers()[0];
+  const setAxes = (v) => sw.evaluate(async (v) => { const { settings } = await chrome.storage.local.get('settings'); settings.skins.blendAxes = v; delete settings._meta; await chrome.storage.local.set({ settings }); }, v);
+  await setAxes(false);
+  await waitFor(async () => (await read()).axis[3] === 255, { message: 'axes solid when blending is off' });
+  await setAxes(true);
+  await waitFor(async () => (await read()).axis[3] === 0, { message: 'axes blend again' });
 });
 
 await check('skin is visible behind the chart and animates', async () => {

@@ -124,6 +124,7 @@ _Last updated: 2026-10-11._
 - 🟡 The key guard assumes the page's shortcut handlers don't register before the content script at document start. Confirmed against the mock page only.
 - ✅ The TVS button is draggable anywhere on screen and remembers where you put it (a click still opens the panel). Covered by an e2e check.
 - ✅ Visual restyle: the panel, settings page, popup and options page now use flat TradingView-style surfaces (solid #1e222d panels, 1px borders, 4px radii, TradingView blue only for the active tab, toggles and primary buttons). Removed the purple-blue gradient, glass blur, glows, uppercase micro-labels and nested cards; the tab bar is text with an underline; the brand mark and toolbar icon are flat. Em dashes in UI copy were replaced with plainer punctuation.
+- ✅ The price and time axes now blend with the skin by default (Skins → Look → Blend the price and time axes turns it off). The old default kept them solid grey, which showed as a hard edge on embedded platforms. The e2e check covers both settings. This is the likely answer to the earlier bottom-strip report, but 🟡 not confirmed on TradeSea or TopstepX.
 - ❓ "Some parts at the bottom are themed but the lines aren't": the report was unclear. Needs a screenshot or a description of which strip and which lines (grid, axis borders, the time scale, the pane separator) look wrong. Not changed yet ⏳
 
 ## Phase 5 — Desktop ✅ (🟡 on real installs)

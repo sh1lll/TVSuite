@@ -396,7 +396,7 @@ export function skinsTab(app) {
         slider({ label: 'Blur', value: cfg.blur, min: 0, max: 20, step: 0.5, fmt: (v) => `${v}px`, onInput: (v) => update((st) => { st.skins.blur = v; }) }),
         slider({ label: 'Saturation', value: cfg.saturate, min: 0, max: 2, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%`, onInput: (v) => update((st) => { st.skins.saturate = v; }) }),
         toggle({ label: 'Black & white', checked: cfg.grayscale, onChange: (v) => update((st) => { st.skins.grayscale = v; }) }),
-        cfg.mode === 'under' ? toggle({ label: 'Show under price/time axes', checked: cfg.includeAxes, onChange: (v) => update((st) => { st.skins.includeAxes = v; }) }) : null),
+        cfg.mode === 'under' ? toggle({ label: 'Blend the price and time axes', hint: 'The skin shows behind the scales too. Turn off to keep them solid.', checked: cfg.blendAxes !== false, onChange: (v) => update((st) => { st.skins.blendAxes = v; }) }) : null),
       section('Performance',
         row('Frame rate', segmented({ value: String(cfg.fps), options: [['15', '15'], ['30', '30'], ['60', '60 fps']], onChange: (v) => update((st) => { st.skins.fps = +v; }), cls: 'grow' })),
         slider({ label: 'Resolution', value: cfg.scale, min: 0.25, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%`, onInput: (v) => update((st) => { st.skins.scale = v; }) })),

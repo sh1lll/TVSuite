@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS = {
     grayscale: false,
     fps: 30,
     scale: 0.75,            // render resolution relative to device pixels
-    includeAxes: false,     // also clear price/time axis backgrounds
+    blendAxes: true,        // price and time axes show the skin too (off: they keep their own background)
     params: {},             // per-skin param overrides: { [skinId]: {...} }
     library: [],            // user skins (validated packs)
     reactive: structuredClone(DEFAULT_REACTIVE),

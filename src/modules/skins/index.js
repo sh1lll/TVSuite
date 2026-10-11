@@ -118,7 +118,8 @@ export function createSkinsModule(ctx) {
     let style = document.getElementById(STYLE_ID);
     if (!style) { style = document.createElement('style'); style.id = STYLE_ID; (document.head || document.documentElement).append(style); }
     const root = 'html[data-tvsuite-mode="under"]';
-    const sel = adapter.transparentSelectors.map((x) => `${root} ${x}`).join(',\n');
+    const list = [...adapter.transparentSelectors, ...(cfg.blendAxes !== false && adapter.axesSelector ? adapter.axesSelector.split(',').map((x) => x.trim()) : [])];
+    const sel = list.map((x) => `${root} ${x}`).join(',\n');
     style.textContent = `
 ${sel ? `${sel} { background: transparent !important; background-color: transparent !important; }` : ''}
 html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
@@ -129,7 +130,7 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     // Tell the MAIN-world script which canvases may have their background fill cleared.
     if (on && cfg.mode === 'under' && adapter.clearScope) {
       html.setAttribute('data-tvsuite-clear', adapter.clearScope);
-      if (!cfg.includeAxes && adapter.axesSelector) html.setAttribute('data-tvsuite-clear-exclude', adapter.axesSelector);
+      if (cfg.blendAxes === false && adapter.axesSelector) html.setAttribute('data-tvsuite-clear-exclude', adapter.axesSelector);
       else html.removeAttribute('data-tvsuite-clear-exclude');
     } else {
       html.removeAttribute('data-tvsuite-clear');
