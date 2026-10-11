@@ -69,6 +69,7 @@ _Last updated: 2026-10-11 (session 1)._
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓
+1. ~~GitHub push blocked~~ — resolved: the work is pushed (after a recorded demo, `npm run demo`).
 2. **Live verification on your machine**, which I can't do from the build container:
    - load `dist/extension` on a real TradingView chart and check **About → Diagnostics**: "Background clears" > 0 and "Legend found: yes";
    - try the Templates tab on a test account first;
