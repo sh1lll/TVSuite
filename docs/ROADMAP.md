@@ -2,7 +2,7 @@
 
 Status legend: ✅ done & verified (unit/e2e) · 🟡 done, needs verification on real TradingView · 🔨 in progress · ⏳ planned · 🧪 needs research · ❓ needs owner decision
 
-_Last updated: 2026-10-11 (session 1)_
+_Last updated: 2026-10-11 (session 1)._
 
 ## Phase 0 — Research ✅
 - ✅ TradingView feature-gap survey → `docs/research/tradingview-gaps.md`
