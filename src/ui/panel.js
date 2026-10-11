@@ -8,8 +8,9 @@ import { sessionsTab } from './tab-sessions.js';
 import { toolsTab } from './tab-tools.js';
 import { aboutTab } from './tab-about.js';
 import { soundTab } from './tab-sound.js';
+import { bridgeTab } from './tab-bridge.js';
 
-const ALL_TABS = [['skins', 'Skins'], ['sound', 'Sound'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
+const ALL_TABS = [['skins', 'Skins'], ['sound', 'Sound'], ['bridge', 'Bridge'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
 const SHORT = { templates: 'Backup' };
 const POS_KEY = 'ui:pos';
 
@@ -53,7 +54,7 @@ export async function createPanel(app) {
   const views = {};
   function view(id) {
     if (!views[id]) {
-      const make = { skins: skinsTab, sound: soundTab, templates: templatesTab, sessions: sessionsTab, tools: toolsTab, about: aboutTab }[id];
+      const make = { skins: skinsTab, sound: soundTab, bridge: bridgeTab, templates: templatesTab, sessions: sessionsTab, tools: toolsTab, about: aboutTab }[id];
       views[id] = make(app);
     }
     return views[id];

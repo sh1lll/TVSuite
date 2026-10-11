@@ -41,7 +41,7 @@ Ranked by demand evidence vs effort. See `docs/research/tradingview-gaps.md`.
 | **Hotkey remapper + visibility presets + "spacebar = next symbol" off** | A1–A3 | Yes, S–M | ⏳ Keydown capture → TradingView actions via simulated UI or DOM |
 | **Full account backup** (templates ✅ with scheduled auto-backup ✅; layouts, indicator templates, watchlists, alerts still to do) | B1, D1, C2 | Partial, M–L | 🧪 Map the remaining endpoints on a real account |
 | **Alert bulk tools** (create across a watchlist, copy, backup) | C1–C2 | Yes, M | 🧪 Endpoints; rate limits; ToS care |
-| **Custom alert sounds** | C4 | Yes, S | ⏳ Intercept alert toasts → play the user's own audio |
+| **Custom alert sounds** | C4 | ✅ shipped | Sound tab: TradingView alert/order toasts (keyword-matched) → built-in or your own audio, plus voice |
 | **Screenshot → local journal** with tags, R-multiple, session and a notes DB in IndexedDB | F1/F2 | ✅ shipped | Next: auto-fill entry/stop from the selected position drawing 🧪 |
 | **Personal risk guard** (daily loss lockout overlay) | F3 | Partial | 🧪 Can only *warn* or dim order buttons; never touches orders |
 | **Layout search/tags** | E1 | Yes, S–M | ⏳ |
@@ -51,7 +51,29 @@ Ranked by demand evidence vs effort. See `docs/research/tradingview-gaps.md`.
 | **Watchlist export with sections + import from Finviz/CSV** | D5 | Yes, S | ⏳ |
 | **Crypto order-flow overlays** from public exchange WebSockets (CVD, big trades, heatmap) | H1–H3 | Partial (crypto only), L | 🧪 Separate opt-in module; clearly labelled data source |
 
-## D. Rejected or deferred on purpose
+## D. Sound & senses: things that should exist (new lane)
+
+| Idea | Status | Notes |
+|---|---|---|
+| **Event sounds**: trade entered/closed, TradingView alert, local price level, daily-open cross, big candle, bar close, session open/close/one minute to open, calm mode, journal capture | ✅ | 15 synthesized effects, or your own MP3/WAV/OGG/M4A/FLAC, or a link. Rate-limited. Every effect is verified non-silent by an offline render in e2e. |
+| **Ambient trading beds**: rain, ocean, brown/pink noise, lo-fi pad, space drone, or your own loop or link | ✅ | Ducks automatically under event sounds and speech. |
+| **Voice announcements** ("NQ crossed 21,000", "London is open") | ✅ | System voice, rate and voice picker, per-event toggle. |
+| **Local price alerts** that don't use TradingView alert slots | ✅ | Read from the price on screen while the chart is open; once or every time; per symbol. |
+| **Manual trade hotkeys** (Alt+Shift+E / X) and **mute** (Alt+Shift+M) | ✅ | For platforms whose fills TVSuite can't see. |
+| **Sonification**: a soft pitch drone that follows price relative to the daily range, so you can hear a trend while looking elsewhere | ⏳ S | Uses the existing signal tracker |
+| **Tape ticks**: a click per N contracts traded (crypto public trades or chart volume) | 🧪 M | Crypto WebSocket only, opt-in |
+| **Tilt guard**: after N losing exits in a row (from toasts or the journal), play a calm cue and dim the chart for 60 s | ⏳ S | Warns only; never blocks orders |
+| **Desktop notifications** mirroring sound events when the tab is in the background | ⏳ S | `notifications` permission, opt-in |
+| **Pomodoro / break reminders** tied to session clock ("NY lunch: step away") | ⏳ S | |
+| **Haptics** on supported devices (gamepad rumble / phone companion) | 🧪 | Gimmick, but fun for streams |
+| **Per-symbol sound packs** (a different entry sound per instrument) | ⏳ S | Same model as per-symbol skins |
+| **Shareable sound packs** (`tvsuite.sounds/1` JSON, synth settings only, no copyrighted audio) | ⏳ S | Same fragment-link scheme as skins |
+
+## E. Platform Bridge: TradingView ⇄ other platforms (new lane)
+
+Full list and status in `docs/research/platform-bridge.md`. Shipped: a symbol translator for 12 platforms, Open in…, right-click "Open in TradingView" on any site, linked tabs across platforms, a watchlist converter, and ProjectX root overrides. Next: trade-history CSV → chart markers, journal export to Tradervue/TradesViz, level export to NinjaTrader/Sierra/TOS, and Pine → ThinkScript/NinjaScript through the AI provider.
+
+## F. Rejected or deferred on purpose
 
 - ❌ **Bypassing plan limits** (alert counts, bars, indicators per chart) or **ad removal**: ToS and ethics. Out of scope.
 - ❌ **Client-side automated order management** (auto-breakeven, trailing) without broker support: a correctness risk with real money.

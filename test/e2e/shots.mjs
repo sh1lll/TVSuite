@@ -35,6 +35,12 @@ await p.locator('input[data-sound-power]').check();
 await p.locator('label.switch', { hasText: 'Voice announcements' }).click();
 await snap('tab-sound');
 for (const [i, y] of [[1, 700], [2, 1400], [3, 2100]]) { await p.locator('.body').evaluate((b, v) => { b.scrollTop = v; }, y); await snap(`tab-sound-${i}`); }
+await p.locator('.tab[data-tab="bridge"]').click();
+await p.locator('input[data-bridge-input]').fill('ES 12-26');
+await snap('tab-bridge');
+await p.locator('textarea[data-wl-in]').fill('###FUTURES,CME_MINI:ESZ2026,CME_MINI:NQZ2026,###TECH,NASDAQ:AAPL,NASDAQ:MSFT,###CRYPTO,BINANCE:BTCUSDT');
+await p.locator('.body').evaluate((b) => { b.scrollTop = 900; });
+await snap('tab-bridge-watchlist');
 for (const t of ['templates', 'sessions', 'tools', 'about']) { await p.locator(`.tab[data-tab="${t}"]`).click(); await snap(`tab-${t}`); }
 console.log('errors:', errs);
 await context.close();

@@ -10,6 +10,7 @@ import { createSkinsModule } from './modules/skins/index.js';
 import { createSoundModule } from './modules/sound/index.js';
 import { SkinHost } from './modules/skins/host.js';
 import { createFocus } from './modules/tools/focus.js';
+import { createSymbolLink } from './modules/bridge/link.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -73,6 +74,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, update: (fn) => app.update(fn) });
   app.sound = sound;
   app.focus = createFocus(adapter, bus);
+  app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   await skins.start();
   sound.start();
   const panel = await createPanel(app);

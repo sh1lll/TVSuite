@@ -168,9 +168,8 @@ await check('overlay mode stops patching the page and blends above the chart', a
   assert.equal(d.blend, 'screen');
   const attrs = await html(page);
   assert.equal(attrs['data-tvsuite-clear'], undefined, 'no clear scope in overlay mode');
-  await sleep(300);
-  const px = await page.evaluate(() => window.mockTV.pixel('main', 0.98, 0.02));
-  assert.equal(px[3], 255, 'chart background painted normally again');
+  // The chart repaints on its next animation frame (slow under a software rasterizer), so wait for it.
+  await waitFor(async () => (await page.evaluate(() => window.mockTV.pixel('main', 0.98, 0.02)))[3] === 255, { message: 'chart background painted normally again' });
   await p.locator('.x').click();
   await page.screenshot({ path: path.join(OUT, '03-overlay.png') });
   p = await skinsView('look');
@@ -625,6 +624,43 @@ function wav() { // 0.3 s 880 Hz PCM tone
   for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 880 * i) / sr) * 12000), 44 + i * 2);
   return b;
 }
+
+console.log('\nPlatform Bridge');
+await check('bridge translates the chart symbol and any typed symbol for every platform', async () => {
+  const p = await openPanel(page, 'bridge');
+  const input = p.locator('input[data-bridge-input]');
+  await waitFor(async () => (await input.inputValue()).length > 0, { message: 'chart symbol prefilled' });
+  await input.fill('ES 12-26');
+  const val = (id) => p.locator(`.row[data-platform="${id}"] code`).textContent();
+  assert.equal(await val('tradingview'), 'CME_MINI:ESZ2026');
+  assert.equal(await val('tradovate'), 'ESZ6');
+  assert.equal(await val('projectx'), 'CON.F.US.EP.Z26');
+  assert.equal(await val('thinkorswim'), '/ESZ26');
+  assert.match(await p.locator('[data-bridge-label]').textContent(), /E-mini S&P 500 · Dec 2026/);
+  await input.fill('NASDAQ:AAPL');
+  assert.ok(await p.locator('button[data-open="finviz"]').isVisible());
+});
+await check('bridge watchlist converter: TradingView sections → NinjaTrader, skipped items reported', async () => {
+  const p = await openPanel(page, 'bridge');
+  await p.locator('textarea[data-wl-in]').fill('###FUT,CME_MINI:ESZ2026,CME_MINI:NQZ2026,###CRYPTO,BINANCE:BTCUSDT');
+  await p.locator('.sec', { hasText: 'Watchlist converter' }).locator('select').selectOption('ninjatrader');
+  assert.equal(await p.locator('textarea[data-wl-out]').inputValue(), 'ES 12-26\nNQ 12-26');
+  assert.match(await p.locator('.sec', { hasText: 'Watchlist converter' }).textContent(), /1 skipped: BINANCE:BTCUSDT/);
+});
+await check('linked tabs: a symbol seen on another platform tab opens on this chart', async () => {
+  const [sw] = context.serviceWorkers();
+  await sw.evaluate(() => chrome.storage.local.set({ 'bridge:seen': { 'topstepx.com': { symbol: 'CON.F.US.ENQ.Z26', at: Date.now(), url: 'https://topstepx.com/trade' } } }));
+  const p = await openPanel(page, 'bridge');
+  const row = p.locator('.row[data-linked="topstepx.com"]');
+  await row.waitFor();
+  const own = await sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => Object.keys(x['bridge:seen'])));
+  await Promise.all([page.waitForURL(/symbol=CME_MINI%3ANQZ2026/), row.getByRole('button', { name: 'Open here' }).click()]);
+  assert.ok(own.includes('topstepx.com'));
+  await page.waitForLoadState('domcontentloaded');
+  await waitFor(async () => (await layerData(page))?.state === 'running', { message: 'skin running after reload' });
+  const seen = await waitFor(() => sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => x['bridge:seen']['www.tradingview.com'])), { message: 'this tab published its symbol' });
+  assert.ok(seen.symbol);
+});
 
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));

@@ -55,6 +55,11 @@ export const DEFAULT_SETTINGS = {
     skinsView: 'library',
   },
   sites: [],                // custom sites for the generic adapter: { host, selector }
+  bridge: {
+    share: true,              // publish this tab's symbol to your other TVSuite tabs (local storage only)
+    projectxRoots: {},        // user overrides: { CL: 'CLE' } for ProjectX/TopstepX contract ids
+    watchlistTo: 'ninjatrader',
+  },
 };
 
 export async function loadSettings() {

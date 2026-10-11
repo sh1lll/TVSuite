@@ -1,6 +1,7 @@
 // MV3 background service worker: AI generation (holds the API key) and custom-site registration.
 import { generateSkin, DEFAULT_AI } from './ai/providers.js';
 import { journalStore } from './modules/journal/store.js';
+import { selectionToTradingView } from './modules/bridge/symbols.js';
 
 const AI_KEY = 'ai';
 const GALLERY_URL = 'https://raw.githubusercontent.com/sh1lll/TVSuite/main/gallery/index.json';
@@ -66,5 +67,20 @@ async function syncSites() {
   ]));
 }
 
-chrome.runtime.onInstalled.addListener(() => { syncSites().catch(() => {}); });
+chrome.runtime.onInstalled.addListener(() => {
+  syncSites().catch(() => {});
+  // Platform Bridge: select a ticker on any page (broker, news, X, Discord web…) → open it in TradingView.
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: 'tvsuite-open-tv', title: 'Open “%s” in TradingView', contexts: ['selection'] });
+  });
+});
+
+chrome.contextMenus?.onClicked.addListener(async (info) => {
+  if (info.menuItemId !== 'tvsuite-open-tv') return;
+  const { settings } = await chrome.storage.local.get('settings');
+  const tv = selectionToTradingView(info.selectionText, settings?.bridge?.projectxRoots || {});
+  // Unrecognized text: hand the first word to TradingView and let its own symbol resolver try.
+  const sym = tv || String(info.selectionText || '').trim().split(/\s+/)[0].replace(/^\$/, '').slice(0, 40).toUpperCase();
+  chrome.tabs.create({ url: `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(sym)}` });
+});
 chrome.permissions.onAdded.addListener(() => { syncSites().catch(() => {}); });

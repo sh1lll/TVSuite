@@ -49,6 +49,14 @@ export function downloadJson(filename, data) {
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
+export function downloadText(filename, text, type = 'text/plain') {
+  const a = el('a', { href: URL.createObjectURL(new Blob([text], { type })), download: filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
 export function pickFile(accept = 'application/json,.json') {
   return new Promise((resolve) => {
     const input = el('input', { type: 'file', accept, style: { display: 'none' } });
