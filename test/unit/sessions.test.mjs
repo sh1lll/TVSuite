@@ -56,3 +56,30 @@ test('zonedParts and countdown formatting', () => {
   assert.equal(formatCountdown(3 * 3600e3 + 5 * 60e3), '3h 05m');
   assert.equal(formatCountdown(65e3), '1m 05s');
 });
+
+test('coarse-scan nextEvent matches a brute-force minute scan', async () => {
+  const { isOpen: open } = await import('../../src/modules/sessions/sessions.js');
+  const brute = (list, d, horizon) => {
+    const base = Math.floor(d.getTime() / 60000) * 60000;
+    const st = new Map(list.map((s) => [s.id, open(s, new Date(base))]));
+    for (let i = 1; i <= horizon; i++) { const t = new Date(base + i * 60000); for (const s of list) { const o = open(s, t); if (o !== st.get(s.id)) return { id: s.id, type: o ? 'open' : 'close', at: t.toISOString() }; } }
+    return null;
+  };
+  const starts = ['2026-10-10T12:00:00Z', '2026-07-15T13:29:30Z', '2026-03-08T06:59:00Z', '2026-03-29T00:45:00Z', '2026-11-01T05:30:00Z', '2026-12-31T23:59:00Z'];
+  for (const iso of starts) {
+    const d = new Date(iso);
+    const a = nextEvent(DEFAULT_SESSIONS, d, 4 * 1440);
+    const b = brute(DEFAULT_SESSIONS, d, 4 * 1440);
+    assert.deepEqual(a && { id: a.session.id, type: a.type, at: a.at.toISOString() }, b, iso);
+  }
+});
+
+test('createNextEventCache reuses results until the event passes', async () => {
+  const { createNextEventCache } = await import('../../src/modules/sessions/sessions.js');
+  const c = createNextEventCache();
+  const a = c(DEFAULT_SESSIONS, new Date('2026-07-15T12:00:00Z'));
+  const b = c(DEFAULT_SESSIONS, new Date('2026-07-15T12:30:00Z'));
+  assert.equal(a, b);
+  const later = c(DEFAULT_SESSIONS, new Date(a.at.getTime() + 60000));
+  assert.notEqual(later, a);
+});

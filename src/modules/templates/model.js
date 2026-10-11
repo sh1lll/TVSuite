@@ -3,13 +3,11 @@
 // so backups move freely between those tools and TVSuite:
 //   { "_": { INFO, USER, DATE }, "THEMES": { name: content }, "TOOLS": { LineToolX: { name: content } } }
 
+import { stableStringify } from '../../core/storage.js';
+
 export const FORMAT_INFO = 'https://github.com/victornpb/tradingview-backup (compatible) · TVSuite';
 
-export function stableStringify(v) {
-  if (v === null || typeof v !== 'object') return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`;
-  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(',')}}`;
-}
+export { stableStringify };
 
 const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
 

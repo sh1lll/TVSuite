@@ -77,18 +77,45 @@ export function activeSession(sessions, date = new Date()) {
 }
 
 // Next open/close event across sessions within the next `horizonMin` minutes (minute resolution).
+// Scans in coarse steps and refines to the minute only where a session's state flips, so a 7-day
+// search costs ~a few hundred zone conversions instead of ~40k. Sessions shorter than STEP minutes
+// could be skipped by the coarse scan; real market sessions are hours long.
+const STEP = 15;
 export function nextEvent(sessions, date = new Date(), horizonMin = 7 * 1440) {
   const base = Math.floor(date.getTime() / 60000) * 60000;
-  const state = new Map(sessions.map((s) => [s.id, safeOpen(s, new Date(base))]));
-  for (let i = 1; i <= horizonMin; i++) {
-    const t = new Date(base + i * 60000);
-    for (const s of sessions) {
-      if (s.enabled === false) continue;
-      const now = safeOpen(s, t);
-      if (now !== state.get(s.id)) return { session: s, type: now ? 'open' : 'close', at: t };
+  const active = sessions.filter((s) => s.enabled !== false);
+  const state = new Map(active.map((s) => [s.id, safeOpen(s, new Date(base))]));
+  for (let i = STEP; i <= horizonMin + STEP; i += STEP) {
+    const t = new Date(base + Math.min(i, horizonMin) * 60000);
+    let best = null;
+    for (const s of active) {
+      if (safeOpen(s, t) === state.get(s.id)) continue;
+      // Refine: first minute in (i-STEP, i] where the state differs.
+      for (let m = i - STEP + 1; m <= Math.min(i, horizonMin); m++) {
+        const tm = new Date(base + m * 60000);
+        const now = safeOpen(s, tm);
+        if (now !== state.get(s.id)) { if (!best || tm < best.at) best = { session: s, type: now ? 'open' : 'close', at: tm }; break; }
+      }
     }
+    if (best) return best;
+    if (i >= horizonMin) break;
   }
   return null;
+}
+
+// Memoized nextEvent for UI that repaints every second: recomputes only when the cached event has
+// passed or the session list changed.
+export function createNextEventCache(horizonMin = 7 * 1440) {
+  let key = null, ev = null, until = 0;
+  return (sessions, now = new Date()) => {
+    const k = JSON.stringify(sessions);
+    if (k !== key || now.getTime() >= until) {
+      key = k;
+      ev = nextEvent(sessions, now, horizonMin);
+      until = ev ? ev.at.getTime() : now.getTime() + 15 * 60000;
+    }
+    return ev;
+  };
 }
 
 function safeOpen(s, d) { try { return isOpen(s, d); } catch (_) { return false; } }

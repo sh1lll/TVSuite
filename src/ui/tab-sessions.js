@@ -1,13 +1,14 @@
 // Sessions tab: live session clock, per-session skin mapping, custom sessions, HUD toggle.
 import { el, setChildren } from '../core/dom.js';
 import { section, row, toggle, button, chip, toast } from './kit.js';
-import { isOpen, nextEvent, formatCountdown, parseHHMM } from '../modules/sessions/sessions.js';
+import { isOpen, createNextEventCache, formatCountdown, parseHHMM } from '../modules/sessions/sessions.js';
 import { BUILTIN_CANVAS, BUILTIN_SHADERS } from '../modules/skins/builtins.js';
 
 export function sessionsTab(app) {
   const { getSettings, update, root } = app;
   const wrap = el('div');
   let clockEl;
+  const nextEventCached = createNextEventCache();
 
   function skinOptions(current) {
     const lib = getSettings().skins.library;
@@ -19,7 +20,7 @@ export function sessionsTab(app) {
     if (!clockEl?.isConnected) return;
     const list = getSettings().sessions.list;
     const now = new Date();
-    const ev = nextEvent(list, now);
+    const ev = nextEventCached(list, now);
     setChildren(clockEl, 
       ...list.map((s) => {
         let open = false;

@@ -1,6 +1,6 @@
 // Shared bootstrap for every host (extension content script, TradingView Desktop injection, userscript).
 import { Bus } from './core/bus.js';
-import { storage, withDefaults } from './core/storage.js';
+import { storage, withDefaults, stableStringify } from './core/storage.js';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from './core/settings.js';
 import { HOST } from './core/env.js';
 import { debounce } from './core/dom.js';
@@ -39,8 +39,8 @@ export async function startTVSuite({ ai = null, forceInline = false } = {}) {
   const bus = new Bus();
   // Remember what we wrote so storage change events caused by our own saves are not mistaken for
   // edits from the popup/options page/another tab (which would rebuild the panel under the user).
-  const ownWrites = [JSON.stringify(settings)];
-  const persist = debounce(() => { const json = JSON.stringify(settings); ownWrites.push(json); if (ownWrites.length > 20) ownWrites.shift(); saveSettings(settings); }, 250);
+  const ownWrites = [stableStringify(settings)];
+  const persist = debounce(() => { const json = stableStringify(settings); ownWrites.push(json); if (ownWrites.length > 20) ownWrites.shift(); saveSettings(settings); }, 250);
 
   const app = {
     version: VERSION, host: HOST, adapter, bus, ai, queryMain,
@@ -62,8 +62,8 @@ export async function startTVSuite({ ai = null, forceInline = false } = {}) {
 
   // Settings changed elsewhere (popup, options page, another tab).
   storage.watch(SETTINGS_KEY, (v) => {
-    const json = JSON.stringify(v);
-    if (!v || ownWrites.includes(json) || json === JSON.stringify(settings)) return;
+    const json = stableStringify(v);
+    if (!v || ownWrites.includes(json) || json === stableStringify(settings)) return;
     settings = withDefaults(DEFAULT_SETTINGS, v);
     ownWrites.push(json);
     skins.update();

@@ -184,7 +184,11 @@ export function templatesTab(app) {
     return box;
   }
 
+  let renderSeq = 0;
   async function render() {
+    const seq = ++renderSeq;
+    const snaps = await snapshotsSection();
+    if (seq !== renderSeq) return; // a newer render started while we awaited storage
     const c = state.source ? countEntries(state.source) : null;
     const dis = state.busy ? { disabled: true } : {};
     setChildren(wrap, 
@@ -197,7 +201,7 @@ export function templatesTab(app) {
       state.source ? section('Restore selected',
         select({ label: 'If name exists', value: state.strategy, options: [['overwrite', 'Overwrite'], ['skip', 'Keep existing (skip)'], ['rename', 'Save as "name (restored)"']], onChange: (v) => { state.strategy = v; } }),
         el('div', { class: 'btns' }, button('Compare with live', actions.compare, '', dis), button('Restore to TradingView…', actions.restore, 'green', dis))) : null,
-      await snapshotsSection(),
+      snaps,
       section('Danger zone', button('Factory reset — delete all templates & themes…', actions.factoryReset, 'danger', dis)),
       el('div', { class: 'note' }, 'Uses TradingView\'s own (undocumented) web endpoints with your session, from this tab. Compatible with victornpb/vngbh backup files.'),
     );

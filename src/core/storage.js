@@ -61,3 +61,11 @@ export function withDefaults(defaults, saved) {
   }
   return out;
 }
+
+// JSON with sorted object keys. chrome.storage hands values back with keys sorted, so equality checks
+// against what we wrote must ignore key order.
+export function stableStringify(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`;
+  return `{${Object.keys(v).sort().filter((k) => v[k] !== undefined).map((k) => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(',')}}`;
+}

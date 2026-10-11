@@ -55,8 +55,10 @@ export class SkinRunner {
   }
 
   resize(w, h, dpr) {
-    this.w = Math.max(1, Math.round(w));
-    this.h = Math.max(1, Math.round(h));
+    const nw = Math.max(1, Math.round(w)), nh = Math.max(1, Math.round(h));
+    if (nw === this.w && nh === this.h && (!dpr || dpr === this.dpr) && !this.needsSetup) return;
+    this.w = nw;
+    this.h = nh;
     if (dpr) this.dpr = dpr;
     this.canvas.width = this.w;
     this.canvas.height = this.h;

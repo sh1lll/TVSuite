@@ -11,12 +11,15 @@ const OUT = path.join(ROOT, 'test/e2e/out');
 mkdirSync(OUT, { recursive: true });
 const results = [];
 const only = process.argv[2];
+let page;
 
 async function check(name, fn) {
   if (only && !name.includes(only)) return;
   const t0 = Date.now();
   try { await fn(); results.push({ name, ok: true, ms: Date.now() - t0 }); console.log(`  ✔ ${name} (${Date.now() - t0} ms)`); }
-  catch (err) { results.push({ name, ok: false, err }); console.log(`  ✘ ${name}\n      ${String(err.stack || err).split('\n').slice(0, 4).join('\n      ')}`); }
+  catch (err) {
+    try { await page?.screenshot({ path: path.join(OUT, `fail-${name.replace(/[^a-z0-9]+/gi, '-').slice(0, 60)}.png`) }); } catch (_) { /* page may be closed */ }
+    results.push({ name, ok: false, err }); console.log(`  ✘ ${name}\n      ${String(err.stack || err).split('\n').slice(0, 4).join('\n      ')}`); }
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -56,7 +59,7 @@ console.log(`Chromium: ${CHROME}`);
 const { context, extensionId } = await launchWithExtension();
 const backend = makeBackend();
 await routeTradingView(context, backend);
-const page = await context.newPage();
+page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error' && /TVSuite/.test(m.text())) pageErrors.push(m.text()); });
@@ -94,7 +97,7 @@ await check('every built-in canvas and shader skin starts without errors', async
   for (const id of ids) {
     await p.locator(`.card[data-skin="${id}"]`).first().click();
     try {
-      await waitFor(async () => { const d = await layerData(page); return d?.state === 'running' || d?.state === 'error' ? d : null; }, { timeout: 6000, message: `${id} start` });
+      await waitFor(async () => { const d = await layerData(page); return d?.skin === id && (d?.state === 'running' || d?.state === 'error') ? d : null; }, { timeout: 10000, message: `${id} start` });
       await sleep(900);
       const d = await layerData(page);
       if (d.state !== 'running') failures.push(`${id}: ${d.state} ${d.error || ''}`);
@@ -347,6 +350,29 @@ await check('inject bundle runs in-page (desktop mode) with worker rendering', a
   await pg.screenshot({ path: path.join(OUT, '07-desktop-inject.png') });
   assert.deepEqual(errs, []);
   await browser.close();
+});
+
+await check('desktop launcher attaches over CDP, injects, and survives a reload', async () => {
+  const { spawn } = await import('node:child_process');
+  const port = 9339;
+  const browser = await chromium.launch({ executablePath: CHROME, headless: true, args: [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1', '--enable-unsafe-swiftshader'] });
+  const ctx = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+  await routeTradingView(ctx, makeBackend());
+  const pg = await ctx.newPage();
+  await pg.goto('https://www.tradingview.com/chart/desk/');
+  const proc = spawn(process.execPath, [path.join(ROOT, 'desktop/launcher.mjs'), 'attach', '--port', String(port), '--verbose'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  proc.stdout.on('data', (d) => { out += d; });
+  proc.stderr.on('data', (d) => { out += d; });
+  try {
+    await waitFor(() => pg.evaluate(() => !!window.__TVSUITE__), { timeout: 15000, message: `launcher injection (${out})` });
+    assert.equal(await pg.evaluate(() => window.__TVSUITE__.host), 'desktop');
+    await waitFor(async () => (await layerData(pg))?.state === 'running', { message: 'skin running after launcher injection' });
+    await pg.reload();
+    await waitFor(() => pg.evaluate(() => !!window.__TVSUITE__ && (window.__tvsuiteClears || 0) > 0), { timeout: 15000, message: 're-injected after reload' });
+    assert.match(out, /TVSuite active in chart window/);
+    await pg.screenshot({ path: path.join(OUT, '08-desktop-launcher.png') });
+  } finally { proc.kill(); await browser.close(); }
 });
 
 const failed = results.filter((r) => !r.ok);

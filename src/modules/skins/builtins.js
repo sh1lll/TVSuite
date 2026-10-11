@@ -134,10 +134,12 @@ export const BUILTIN_CANVAS = [
       const sr = Math.min(w, h) * (0.16 + 0.03 * s.pulse);
       const sg = ctx.createLinearGradient(0, horizon - sr * 2, 0, horizon);
       sg.addColorStop(0, lib.hsl(45, 100, 60, 0.85)); sg.addColorStop(1, lib.hsl(p.hue + 20, 100, 55, 0.85));
-      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, horizon); ctx.clip();
-      ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(w / 2, horizon, sr * 1.2, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = '#05010d';
-      for (let i = 0; i < 6; i++) { const yy = horizon - sr * 0.12 - i * sr * 0.18; ctx.fillRect(w / 2 - sr * 1.3, yy, sr * 2.6, sr * 0.035 * (6 - i)); }
+      ctx.save();
+      ctx.beginPath(); ctx.arc(w / 2, horizon, sr * 1.2, Math.PI, 0); ctx.closePath(); ctx.clip();
+      ctx.fillStyle = sg; ctx.fillRect(w / 2 - sr * 1.3, horizon - sr * 1.3, sr * 2.6, sr * 1.3);
+      // Horizontal gaps in the sun, filled with the sky so they read as cut-outs.
+      ctx.fillStyle = sky;
+      for (let i = 0; i < 6; i++) { const yy = horizon - sr * 0.1 - i * sr * 0.17; ctx.fillRect(w / 2 - sr * 1.3, yy, sr * 2.6, Math.max(1, sr * 0.03 * (6 - i))); }
       ctx.restore();
       state.off = ((state.off || 0) + dt * p.speed * (0.2 + s.velocity * 1.5)) % 1;
       ctx.strokeStyle = lib.hsl(p.hue, 100, 60, 0.35 + 0.4 * s.intensity);

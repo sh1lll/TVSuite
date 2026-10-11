@@ -57,6 +57,7 @@ export class SkinHost {
     if (!spec) { old.forEach((l) => this._fadeOut(l)); this.status({ state: 'off' }); return; }
     const layer = this._createLayer(spec, skin);
     if (!layer) return;
+    this.current = layer;
     this.layers.push(layer);
     requestAnimationFrame(() => { layer.el.style.opacity = '1'; });
     setTimeout(() => old.forEach((l) => this._fadeOut(l)), FADE_MS);
@@ -120,7 +121,7 @@ export class SkinHost {
         params: spec.params, fps: this.fps, dpr,
         raf: requestAnimationFrame.bind(globalThis), caf: cancelAnimationFrame.bind(globalThis),
         onError: (message) => this._fail(layer, message),
-        onStats: (stats) => this.status({ state: 'running', skin: skin.id, mode: 'inline', ...stats }),
+        onStats: (stats) => { if (layer === this.current) this.status({ state: 'running', skin: skin.id, mode: 'inline', ...stats }); },
       });
       layer.runner.resize(width, height, dpr);
       layer.runner.setSignals(this.signals);
@@ -137,6 +138,8 @@ export class SkinHost {
   _onWorkerMessage(layer, m) {
     if (!m || typeof m !== 'object') return;
     layer.lastBeat = performance.now();
+    // Layers fading out keep running briefly; only the current layer may report status.
+    if (layer !== this.current && m.type !== 'error') return;
     if (m.type === 'error') this._fail(layer, String(m.message).slice(0, 300));
     else if (m.type === 'ready') this.status({ state: 'running', skin: layer.skin.id, mode: 'worker' });
     else if (m.type === 'stats') this.status({ state: 'running', skin: layer.skin.id, mode: 'worker', fps: +m.fps || 0, frameMs: +m.frameMs || 0 });
@@ -145,6 +148,7 @@ export class SkinHost {
   _fail(layer, message) {
     this._dispose(layer);
     this.layers = this.layers.filter((l) => l !== layer);
+    if (layer !== this.current) return;
     this.status({ state: 'error', skin: layer.skin?.id, message });
   }
 

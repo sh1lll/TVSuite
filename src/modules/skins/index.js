@@ -79,12 +79,13 @@ export function createSkinsModule(ctx) {
   let lastSession = undefined, sessionSkin = null;
   let timers = [];
   let lastApplied = null;
+  let sent = {};
 
   function s() { return getSettings().skins; }
 
   function setStatus(st) {
-    status = { ...status, ...st };
-    if (layer) layer.dataset.state = status.state || '';
+    status = st.state === 'starting' || st.state === 'error' || st.state === 'off' ? { ...st } : { ...status, ...st };
+    if (layer) { layer.dataset.state = status.state || ''; if (st.skin) layer.dataset.skin = st.skin; }
     if (layer) { if (st.state === 'error') layer.dataset.error = String(st.message || '').slice(0, 200); else if (st.state === 'running') delete layer.dataset.error; }
     if (layer && status.fps != null) layer.dataset.fps = String(status.fps);
     bus.emit('skins:status', status);
@@ -155,7 +156,7 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
       await switchToInline();
     }
     layer.dataset.transport = preferFrame ? 'frame' : 'inline';
-    lastApplied = null;
+    lastApplied = null; sent = {};
     pushAll();
     return true;
   }
@@ -165,7 +166,7 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     transport?.destroy();
     transport = new InlineTransport(shadow, setStatus, ctx.SkinHost, ctx.workerSource);
     if (layer) layer.dataset.transport = 'inline';
-    lastApplied = null;
+    lastApplied = null; sent = {};
     pushAll();
   }
 
@@ -188,8 +189,9 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
   function pushAll() {
     if (!transport) return;
     const cfg = s();
-    transport.send({ type: 'fps', fps: cfg.fps });
-    transport.send({ type: 'scale', scale: cfg.scale });
+    // Only send what changed: a scale message resizes (and re-seeds) the running skin.
+    if (sent.fps !== cfg.fps) { sent.fps = cfg.fps; transport.send({ type: 'fps', fps: cfg.fps }); }
+    if (sent.scale !== cfg.scale) { sent.scale = cfg.scale; transport.send({ type: 'scale', scale: cfg.scale }); }
     const skin = cfg.enabled ? currentSkin() : null;
     const key = JSON.stringify(skin);
     if (key !== lastApplied) { lastApplied = key; transport.send({ type: 'skin', skin }); }
