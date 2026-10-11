@@ -13,7 +13,7 @@ const bundledCode = new Set(GALLERY.map((g) => g.code || g.glsl));
 const cache = new Map(); // key -> ImageBitmap | 'none'
 const pending = new Map();
 
-const keyOf = (skin) => JSON.stringify([skin.kind, skin.base || skin.id, skin.params || null, (skin.code || skin.glsl || '').length, skin.url || '']);
+const keyOf = (skin) => JSON.stringify([skin.kind, skin.base || skin.id, skin.params || null, (skin.code || skin.glsl || '').length, skin.url || '', (skin.thumb || '').length]);
 
 // Trusted skins → { kind, program|glsl, compiled?, params } runnable in this context; null otherwise.
 export function trustedSpec(skin) {
@@ -45,6 +45,15 @@ function renderStill(spec, frames = 45) {
 
 function hashHue(str) { let h = 0; for (const c of String(str)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h) % 360; }
 
+// Decode a data: URL without the network (page CSP may forbid data: images).
+async function bitmapFromDataUrl(dataUrl) {
+  const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return createImageBitmap(new Blob([bytes], { type: dataUrl.slice(5, dataUrl.indexOf(';')) }));
+}
+
 function paintPlaceholder(canvas, skin) {
   const ctx = canvas.getContext('2d');
   const h = hashHue(skin.id || skin.name);
@@ -53,6 +62,10 @@ function paintPlaceholder(canvas, skin) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '600 34px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(skin.kind === 'media' ? '▶' : skin.kind === 'shader' ? '◆' : '</>', W / 2, H / 2 - 6);
+  if (skin.kind === 'media' && /^https:/.test(skin.url || '')) {
+    ctx.font = '600 17px ui-sans-serif, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.6)';
+    try { ctx.fillText(new URL(skin.url).hostname.replace(/^www\./, ''), W / 2, H / 2 + 36); } catch (_) { /* ignore */ }
+  }
 }
 
 // Fills `canvas` (a 2D canvas element) with the skin's still preview.
@@ -65,8 +78,9 @@ export async function paintPreview(canvas, skin, { thumbnail } = {}) {
       pending.set(key, (async () => {
         const spec = trustedSpec(skin);
         let out = null;
-        try { out = spec ? renderStill(spec) : null; } catch (_) { out = null; }
-        if (!out && thumbnail) { try { out = await thumbnail(skin, W, H); } catch (_) { out = null; } }
+        if (skin.kind === 'media' && skin.thumb) { try { out = await bitmapFromDataUrl(skin.thumb); } catch (_) { out = null; } }
+        if (!out && skin.kind !== 'media') { try { out = spec ? renderStill(spec) : null; } catch (_) { out = null; } }
+        if (!out && thumbnail && skin.kind !== 'media') { try { out = await thumbnail(skin, W, H); } catch (_) { out = null; } }
         if (out) cache.set(key, out); // failures aren't cached: the sandbox may simply not be ready yet
         pending.delete(key);
         return out || 'none';

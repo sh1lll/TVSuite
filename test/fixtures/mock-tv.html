@@ -96,6 +96,12 @@
   // Test hooks (main world).
   window.mockTV = {
     setVolatility(v) { vol = v; },
+    setPrice(p) { price = p; last.c = p; last.h = Math.max(last.h, p); last.l = Math.min(last.l, p); legend(); },
+    price() { return last.c; },
+    toast(text) {                                             // a notification like TradingView's order/alert toasts
+      const t = document.createElement('div'); t.className = 'toast-mock';
+      document.body.append(t); setTimeout(() => { t.textContent = text; }, 30); setTimeout(() => t.remove(), 4000);
+    },
     setSymbol(sym) {
       document.querySelector('[data-name="legend-source-title"]').textContent = sym;
       document.getElementById('header-toolbar-symbol-search').textContent = sym;

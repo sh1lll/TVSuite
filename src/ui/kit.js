@@ -38,9 +38,10 @@ svg.i { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentCo
   background: transparent; color: var(--muted); cursor: pointer; }
 .x:hover, .iconbtn:hover { background: var(--raise2); color: var(--text); }
 .tabs { display: flex; gap: 2px; margin: 0 10px; padding: 3px; background: rgba(0,0,0,.28); border: 1px solid var(--line); border-radius: 11px; }
-.tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 4px; border: 0; border-radius: 8px; background: none;
+.tab { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 4px; border: 0; border-radius: 8px; background: none;
   color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; transition: background .15s, color .15s; }
 .tab:hover { color: var(--text); }
+.tab .lbl { overflow: hidden; white-space: nowrap; } .tab:not(.on) .lbl { display: none; } .tab.on { flex: 2.2 1 0; }
 .tab.on { color: #fff; background: linear-gradient(135deg, rgba(91,140,255,.32), rgba(154,107,255,.28)); box-shadow: inset 0 0 0 1px rgba(140,160,255,.35); }
 .body { overflow-y: auto; padding: 12px 14px 16px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.12) transparent; }
 .body::-webkit-scrollbar { width: 8px; } .body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
@@ -197,6 +198,10 @@ const ICONS = {
   play: ['M7 4l13 8-13 8z'],
   check: ['M5 12l5 5 9-11'],
   power: ['M12 2v10', 'M18.4 6.6a9 9 0 1 1-12.8 0'],
+  sound: ['M11 5L6 9H2v6h4l5 4z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M19 5a10 10 0 0 1 0 14'],
+  mute: ['M11 5L6 9H2v6h4l5 4z', 'M22 9l-6 6', 'M16 9l6 6'],
+  trash: ['M3 6h18', 'M8 6V4h8v2', 'M6 6l1 14h10l1-14'],
+  bridge: ['M3 17c3-6 15-6 18 0', 'M3 17v3', 'M21 17v3', 'M8 14v6', 'M16 14v6', 'M12 13v7'],
 };
 const NS = 'http://www.w3.org/2000/svg';
 export function icon(name, cls = 'i') {

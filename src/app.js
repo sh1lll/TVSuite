@@ -7,6 +7,7 @@ import { debounce } from './core/dom.js';
 import { matchHotkey, isTypingTarget } from './core/hotkeys.js';
 import { pickAdapter } from './adapters/tradingview.js';
 import { createSkinsModule } from './modules/skins/index.js';
+import { createSoundModule } from './modules/sound/index.js';
 import { SkinHost } from './modules/skins/host.js';
 import { createFocus } from './modules/tools/focus.js';
 import { createPanel } from './ui/panel.js';
@@ -62,15 +63,18 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     update(fn, { silent = false } = {}) {
       fn(settings);
       persist();
-      if (!silent) { skins.update(); bus.emit('settings', settings); }
+      if (!silent) { skins.update(); sound.update(); bus.emit('settings', settings); }
     },
     rerender: () => panel?.rerender(),
   };
 
   const skins = createSkinsModule({ adapter, getSettings: () => settings, bus, SkinHost, workerSource: WORKER_SOURCE, forceInline });
   app.skins = skins;
+  const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, update: (fn) => app.update(fn) });
+  app.sound = sound;
   app.focus = createFocus(adapter, bus);
   await skins.start();
+  sound.start();
   const panel = await createPanel(app);
   createHud(app);
   setupJournalCapture(app);
@@ -95,6 +99,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     settings = withDefaults(DEFAULT_SETTINGS, v);
     if (!changedUi) return;
     skins.update();
+    sound.update();
     panel.rerender();
   });
 
@@ -114,6 +119,9 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     else if (matchHotkey(e, settings.tools.focusHotkey)) { e.preventDefault(); e.stopPropagation(); app.focus.toggle(); }
     else if (matchHotkey(e, ui.streamHotkey)) { e.preventDefault(); e.stopPropagation(); toggleStream(); }
     else if (matchHotkey(e, settings.tools.journalHotkey)) { e.preventDefault(); e.stopPropagation(); bus.emit('journal:capture'); }
+    else if (settings.sound.enabled && matchHotkey(e, settings.sound.hotkeys.entry)) { e.preventDefault(); e.stopPropagation(); bus.emit('sound:manual', 'tradeEntry'); }
+    else if (settings.sound.enabled && matchHotkey(e, settings.sound.hotkeys.exit)) { e.preventDefault(); e.stopPropagation(); bus.emit('sound:manual', 'tradeExit'); }
+    else if (settings.sound.enabled && matchHotkey(e, settings.sound.hotkeys.mute)) { e.preventDefault(); e.stopPropagation(); sound.toggleMute(); }
   }, true);
 
   // Shared skin links: https://www.tradingview.com/chart/#tvskin=TVSKIN1.xxxx (the fragment never reaches a server).

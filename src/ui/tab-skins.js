@@ -5,6 +5,8 @@ import { BUILTIN_CANVAS, BUILTIN_SHADERS } from '../modules/skins/builtins.js';
 import { GALLERY } from '../../gallery/skins.mjs';
 import { validateSkin, decodeSkin, skinShareLink, encodeSkin, hasCode, slugify } from '../modules/skins/packs.js';
 import { paintPreview, animateOn, trustedSpec } from './previews.js';
+import { uploadZone } from './upload-zone.js';
+import { normalizeMediaLink } from '../modules/skins/media-links.js';
 
 const ALL_BUILTINS = [...BUILTIN_CANVAS.map((b) => ({ ...b, kind: 'canvas' })), ...BUILTIN_SHADERS.map((b) => ({ ...b, kind: 'shader' }))];
 
@@ -193,6 +195,44 @@ export function skinsTab(app) {
     ];
   }
 
+  // Your own image / GIF / video, from a file or a link.
+  function studioMedia() {
+    const fit = studio.fit || 'cover';
+    const fitSeg = segmented({ value: fit, options: [['cover', 'Fill'], ['contain', 'Fit'], ['fill', 'Stretch']], onChange: (v) => { studio.fit = v; } });
+    const link = el('input', { type: 'text', placeholder: 'Paste a link — .mp4 .gif .png, Giphy, Imgur…' });
+    link.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') addLink(); });
+    const msg = el('div', { class: 'note' });
+    function addLink() {
+      let res;
+      try { res = normalizeMediaLink(link.value); } catch (err) { msg.className = 'note err'; msg.textContent = err.message; return; }
+      const host = new URL(res.url).hostname.replace(/^www\./, '');
+      const file = decodeURIComponent(new URL(res.url).pathname.split('/').pop() || '').replace(/\.[a-z0-9]+$/i, '');
+      const name = (studio.name || file || host).slice(0, 60);
+      const { ok, errors, skin } = validateSkin({ kind: 'media', url: res.url, fit: studio.fit || 'cover', name, id: `media-link-${slugify(name)}-${Date.now().toString(36).slice(-4)}`, params: { rate: 1 }, tags: ['my media', 'link'], description: `Link · ${host}` });
+      if (!ok) { msg.className = 'note err'; msg.textContent = errors.join('; '); return; }
+      if (res.note) toast(root, res.note, 'warn');
+      addToLibrary(skin);
+    }
+    const nameInput = el('input', { type: 'text', value: studio.name || '', placeholder: 'Name (optional)', maxlength: 60 });
+    nameInput.addEventListener('input', () => { studio.name = nameInput.value; });
+    nameInput.addEventListener('keydown', (e) => e.stopPropagation());
+    return [
+      section('Your own image, GIF or video',
+        uploadZone({ accept: 'visual', onItems: (items) => {
+          for (const m of items) {
+            const { ok, skin } = validateSkin({ kind: 'media', url: `local:${m.id}`, fit: studio.fit || 'cover', name: studio.name || m.name, id: `media-${m.id}`, params: { rate: 1 }, tags: ['my media'], description: `${m.type} · ${(m.size / 1048576).toFixed(1)} MB`, thumb: m.thumb || undefined });
+            if (ok) addToLibrary(skin, { quiet: items.length > 1 });
+          }
+        } }),
+        el('div', { class: 'note', style: { textAlign: 'center' } }, 'or paste a link'),
+        el('div', { class: 'row' }, el('div', { class: 'grow' }, link), button('Add', addLink, 'primary')),
+        msg,
+        row('Name', nameInput),
+        row('Framing', fitSeg),
+        el('div', { class: 'note' }, 'Files stay in this browser. Videos play muted and loop; adjust speed, dim and blur in Look. Use a direct file link — YouTube pages can\'t be played as a background.')),
+    ];
+  }
+
   function studioCode() {
     const ta = el('textarea', { class: 'code', spellcheck: 'false' });
     ta.value = studio.code;
@@ -227,8 +267,8 @@ export function skinsTab(app) {
 
   function studioView() {
     return [
-      segmented({ value: studio.mode, cls: 'subnav', options: [['remix', 'Remix', 'wand'], ['code', 'Code', 'code'], ['generate', 'AI', 'sparkle']], onChange: (v) => { Object.assign(studio, { mode: v, editing: null, name: '' }); skins.preview(null); render(); } }),
-      studio.mode === 'remix' ? studioRemix() : studio.mode === 'code' ? studioCode() : generateView(),
+      segmented({ value: studio.mode, cls: 'subnav', options: [['remix', 'Remix', 'wand'], ['media', 'Media', 'film'], ['code', 'Code', 'code'], ['generate', 'AI', 'sparkle']], onChange: (v) => { Object.assign(studio, { mode: v, editing: null, name: '' }); skins.preview(null); render(); } }),
+      studio.mode === 'remix' ? studioRemix() : studio.mode === 'media' ? studioMedia() : studio.mode === 'code' ? studioCode() : generateView(),
     ];
   }
 
@@ -294,7 +334,7 @@ export function skinsTab(app) {
             if (choice === 'paste') { const t = await prompt(root, { title: 'Import skin', text: 'Paste a TVSKIN1 link or skin JSON.', multiline: true }); if (t) importSkin(t); }
             else if (choice === 'file') { const f = await pickFile('.json,application/json'); if (f) importSkin(f.text); }
           }, '', { icon: 'upload' }),
-          app.openOptions ? button('My media', () => app.openOptions('media'), '', { icon: 'film', title: 'Use your own video, GIF or image (stored locally)' }) : null,
+          button('Image / video', () => { Object.assign(studio, { mode: 'media', editing: null, name: '' }); setView('studio'); }, '', { icon: 'film', title: 'Use your own image, GIF or video — file or link' }),
           button('Share current', async () => {
             const a = cfg.active; if (!a) return;
             const rec = a.kind === 'builtin' ? { ...a, params: { ...(a.params || {}), ...(cfg.params[a.id || a.base] || {}) } } : a;
@@ -308,7 +348,7 @@ export function skinsTab(app) {
   // ---- Look -------------------------------------------------------------------------------------
   function paramControls() {
     const a = s().active;
-    if (!a) return null;
+    if (!a || a.kind === 'media') return null;
     const id = a.id || a.base;
     const b = skins.builtins.get(a.base || id);
     const spec = b?.spec || {};
@@ -332,8 +372,22 @@ export function skinsTab(app) {
         button('Save as custom skin', () => { Object.assign(studio, { mode: 'remix', base: a.base || id, params: { ...current }, name: `${a.name || id} remix`, editing: null }); setView('studio'); }, 'sm', { icon: 'wand' })));
   }
 
+  function mediaControls(cfg) {
+    const a = cfg.active;
+    if (a?.kind !== 'media') return null;
+    const setRec = (patch) => update((st) => {
+      st.skins.active = { ...st.skins.active, ...patch };
+      st.skins.library = st.skins.library.map((x) => (x.id === a.id ? { ...x, ...patch } : x));
+    });
+    const rate = s().params?.[a.id]?.rate ?? a.params?.rate ?? 1;
+    return section(el('span', { class: 'grow' }, `Media · ${a.name}`),
+      row('Framing', segmented({ value: a.fit || 'cover', options: [['cover', 'Fill'], ['contain', 'Fit'], ['fill', 'Stretch']], onChange: (v) => setRec({ fit: v }), cls: 'grow' })),
+      slider({ label: 'Video speed', value: rate, min: 0.25, max: 2, step: 0.05, fmt: (v) => `${(+v).toFixed(2)}×`, onInput: (v) => update((st) => { st.skins.params[a.id] = { ...(st.skins.params[a.id] || {}), rate: v }; }) }));
+  }
+
   function lookView(cfg) {
     return [
+      mediaControls(cfg),
       section('Look',
         segmented({ value: cfg.mode, options: [['under', 'Under the candles'], ['overlay', 'Overlay blend']], onChange: (v) => { update((st) => { st.skins.mode = v; }); render(); }, cls: 'mode' }),
         cfg.mode === 'overlay' ? select({ label: 'Blend', value: cfg.blend, options: [['screen', 'Screen'], ['soft-light', 'Soft light'], ['overlay', 'Overlay'], ['lighten', 'Lighten'], ['color-dodge', 'Color dodge']], onChange: (v) => update((st) => { st.skins.blend = v; }) }) : null,

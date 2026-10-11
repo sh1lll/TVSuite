@@ -7,8 +7,9 @@ import { templatesTab } from './tab-templates.js';
 import { sessionsTab } from './tab-sessions.js';
 import { toolsTab } from './tab-tools.js';
 import { aboutTab } from './tab-about.js';
+import { soundTab } from './tab-sound.js';
 
-const ALL_TABS = [['skins', 'Skins'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
+const ALL_TABS = [['skins', 'Skins'], ['sound', 'Sound'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
 const SHORT = { templates: 'Backup' };
 const POS_KEY = 'ui:pos';
 
@@ -52,7 +53,7 @@ export async function createPanel(app) {
   const views = {};
   function view(id) {
     if (!views[id]) {
-      const make = { skins: skinsTab, templates: templatesTab, sessions: sessionsTab, tools: toolsTab, about: aboutTab }[id];
+      const make = { skins: skinsTab, sound: soundTab, templates: templatesTab, sessions: sessionsTab, tools: toolsTab, about: aboutTab }[id];
       views[id] = make(app);
     }
     return views[id];
@@ -61,7 +62,7 @@ export async function createPanel(app) {
   let current = TABS.some(([id]) => id === app.getSettings().ui.tab) ? app.getSettings().ui.tab : 'skins';
   function showTab(id) {
     current = id;
-    setChildren(tabsBar, ...TABS.map(([tid, label]) => el('button', { class: `tab${tid === id ? ' on' : ''}`, onclick: () => showTab(tid), dataset: { tab: tid }, title: label }, icon(tid), SHORT[tid] || label)));
+    setChildren(tabsBar, ...TABS.map(([tid, label]) => el('button', { class: `tab${tid === id ? ' on' : ''}`, onclick: () => showTab(tid), dataset: { tab: tid }, title: label }, icon(tid), el('span', { class: 'lbl' }, SHORT[tid] || label))));
     const v = view(id);
     if (id === 'about' || id === 'templates') v.render();
     setChildren(body, v.el);

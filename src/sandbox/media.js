@@ -6,11 +6,13 @@ const token = new URLSearchParams(location.hash.slice(1)).get('token');
 const root = document.getElementById('root');
 let el = null, paused = false, currentUrl = null, seq = 0;
 
+const rate = (r) => (Number.isFinite(+r) && +r > 0 ? Math.max(0.1, Math.min(4, +r)) : 1);
+
 function reply(msg) { parent.postMessage({ tvsuite: 'sandbox', token, ...msg }, '*'); }
 
 async function show(skin) {
   if (!skin || skin.kind !== 'media') return;
-  if (skin.url === currentUrl && el) { el.style.objectFit = skin.fit || 'cover'; return; }
+  if (skin.url === currentUrl && el) { el.style.objectFit = skin.fit || 'cover'; if (el.tagName === 'VIDEO') el.playbackRate = rate(skin.params?.rate); return; }
   currentUrl = skin.url;
   const mine = ++seq; // a newer show() supersedes this one if it finishes first
   let src = skin.url, type = '', objectUrl = null;
@@ -26,7 +28,7 @@ async function show(skin) {
     const next = document.createElement(isVideo ? 'video' : 'img');
     Object.assign(next.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', objectFit: skin.fit || 'cover', opacity: '0', transition: 'opacity .7s' });
     if (isVideo) Object.assign(next, { muted: true, loop: true, autoplay: !paused, playsInline: true });
-    next.addEventListener(isVideo ? 'loadeddata' : 'load', () => { next.style.opacity = '1'; reply({ type: 'status', status: { state: 'running', skin: skin.id, mode: 'media' } }); }, { once: true });
+    next.addEventListener(isVideo ? 'loadeddata' : 'load', () => { if (isVideo) next.playbackRate = rate(skin.params?.rate); next.style.opacity = '1'; reply({ type: 'status', status: { state: 'running', skin: skin.id, mode: 'media' } }); }, { once: true });
     next.addEventListener('error', () => reply({ type: 'status', status: { state: 'error', skin: skin.id, message: isVideo ? 'This video can\'t be played here (codec not supported by this browser?)' : 'Image failed to load' } }), { once: true });
     next.src = src;
     if (objectUrl) next.dataset.objectUrl = objectUrl;
@@ -43,6 +45,7 @@ window.addEventListener('message', (e) => {
   const m = e.data;
   if (e.source !== parent || !m || m.tvsuite !== 'layer' || !token || m.token !== token) return;
   if (m.type === 'skin') show(m.skin);
+  else if (m.type === 'params' && el?.tagName === 'VIDEO' && m.params && 'rate' in m.params) el.playbackRate = rate(m.params.rate);
   else if (m.type === 'pause') { paused = !!m.paused; if (el?.tagName === 'VIDEO') (paused ? el.pause() : el.play().catch(() => {})); }
 });
 reply({ type: 'hello' });

@@ -7,6 +7,7 @@ import { builtinIndex, builtinProgram } from './builtins.js';
 import { NEUTRAL_SIGNALS } from './signals.js';
 
 const FADE_MS = 700;
+const clampRate = (r) => (Number.isFinite(+r) && +r > 0 ? Math.max(0.1, Math.min(4, +r)) : 1);
 const WATCHDOG_MS = 3000;
 
 export class SkinHost {
@@ -46,7 +47,7 @@ export class SkinHost {
     }
     if (skin.kind === 'canvas') return { kind: 'canvas', program: skin.code, params: skin.params || {}, trusted: false };
     if (skin.kind === 'shader') return { kind: 'shader', glsl: skin.glsl, params: skin.params || {}, trusted: false };
-    if (skin.kind === 'media') return { kind: 'media', url: skin.url, fit: skin.fit || 'cover' };
+    if (skin.kind === 'media') return { kind: 'media', url: skin.url, fit: skin.fit || 'cover', params: skin.params || {} };
     throw new Error(`Unsupported skin kind "${skin.kind}"`);
   }
 
@@ -70,6 +71,7 @@ export class SkinHost {
       const el = document.createElement(isVideo ? 'video' : 'img');
       Object.assign(el.style, base, { objectFit: spec.fit });
       if (isVideo) Object.assign(el, { muted: true, loop: true, autoplay: true, playsInline: true });
+      if (isVideo) el.addEventListener('loadeddata', () => { el.playbackRate = clampRate(spec.params?.rate); });
       el.src = spec.url;
       el.addEventListener('error', () => this.status({ state: 'error', message: 'Media failed to load' }));
       this.container.append(el);
@@ -182,7 +184,10 @@ export class SkinHost {
   }
 
   setSignals(s) { this.signals = { ...this.signals, ...s }; this._broadcast({ type: 'signals', signals: this.signals }, (r) => r.setSignals(this.signals)); }
-  setParams(p) { this._broadcast({ type: 'params', params: p }, (r) => r.setParams(p)); }
+  setParams(p) {
+    for (const l of this.layers) if (l.el.tagName === 'VIDEO' && p && 'rate' in p) l.el.playbackRate = clampRate(p.rate);
+    this._broadcast({ type: 'params', params: p }, (r) => r.setParams(p));
+  }
   setFps(fps) { this.fps = fps; this._broadcast({ type: 'fps', fps }, (r) => r.setFps(fps)); }
   setScale(scale) { this.scale = Math.max(0.25, Math.min(1, scale || 1)); this._resizeAll(); }
   setPaused(paused) {

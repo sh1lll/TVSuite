@@ -62,7 +62,7 @@ async function openPanel(page, tab) {
 }
 
 console.log(`Chromium: ${CHROME}`);
-const { context, extensionId } = await launchWithExtension();
+const { context, extensionId } = await launchWithExtension({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const backend = makeBackend();
 await routeTradingView(context, backend);
 page = await context.newPage();
@@ -530,6 +530,101 @@ await check('journal: Alt+Shift+J captures a clean chart image with context; jou
   await j.screenshot({ path: path.join(OUT, '11-journal.png'), fullPage: true });
   await j.close();
 });
+
+console.log('\nSound');
+const audio = () => page.evaluate(() => { const h = document.getElementById('tvsuite-audio-host'); return h ? { ...h.dataset } : null; });
+const soundFrame = () => page.frames().find((f) => f.url().includes('/sound.html'));
+await check('sound tab: turning Sound on mounts the extension audio frame', async () => {
+  const p = await openPanel(page, 'sound');
+  assert.equal(await audio(), null, 'no audio frame while Sound is off');
+  await p.locator('input[data-sound-power]').check();
+  await waitFor(async () => (await audio())?.state === 'on' && soundFrame(), { message: 'audio frame' });
+  await p.locator('.row[data-event="tradeEntry"]').waitFor();
+  assert.ok(await p.locator('.row[data-event]').count() >= 12, 'every event has a row');
+});
+await check('audio engine renders every synth and ambient bed as non-silent audio', async () => {
+  const res = await soundFrame().evaluate(() => globalThis.__tvsSoundSelfTest());
+  const silent = Object.entries(res).filter(([, v]) => !(v.peak > 0.01)).map(([k]) => k);
+  assert.deepEqual(silent, [], `silent sounds: ${silent.join(', ')}`);
+  assert.ok(Object.keys(res).length >= 21, `tested ${Object.keys(res).length}`);
+});
+await check('event test button plays through the audio frame', async () => {
+  const p = await openPanel(page, 'sound');
+  const before = +(await audio()).played;
+  await p.locator('button[data-test="tradeEntry"]').click();
+  await waitFor(async () => +(await audio()).played > before, { message: 'played count' });
+  assert.equal((await audio()).last, 'tradeEntry');
+  assert.equal((await audio()).error, '');
+});
+await check('TradingView order toast is detected as a trade entry, then an exit', async () => {
+  await page.locator('#tvsuite-panel-host .x').click();
+  let n = +(await audio()).played;
+  await page.evaluate(() => window.mockTV.toast('Order filled: Buy 1 BTCUSD at 63,512.00'));
+  await waitFor(async () => { const a = await audio(); return +a.played > n && a.last === 'tradeEntry'; }, { message: 'entry sound' });
+  n = +(await audio()).played;
+  await page.evaluate(() => window.mockTV.toast('Position closed: BTCUSD +120.00 USD'));
+  await waitFor(async () => { const a = await audio(); return +a.played > n && a.last === 'tradeExit'; }, { message: 'exit sound' });
+});
+await check('manual hotkeys Alt+Shift+E / Alt+Shift+M fire and mute', async () => {
+  await page.mouse.click(500, 400);
+  let n = +(await audio()).played;
+  await page.keyboard.press('Alt+Shift+E');
+  await waitFor(async () => +(await audio()).played > n, { message: 'hotkey entry' });
+  await page.keyboard.press('Alt+Shift+M');
+  n = +(await audio()).played;
+  await page.keyboard.press('Alt+Shift+X');
+  await sleep(700);
+  assert.equal(+(await audio()).played, n, 'muted: nothing plays');
+  await page.keyboard.press('Alt+Shift+M');
+});
+await check('local price alert fires once when price crosses the level, then disarms', async () => {
+  const p = await openPanel(page, 'sound');
+  const alerts = p.locator('.sec', { hasText: 'Price alerts' });
+  const px = await page.evaluate(() => window.mockTV.price());
+  const level = Math.round(px + 500);
+  await alerts.locator('input[type=number]').fill(String(level));
+  await alerts.locator('.seg button[data-value="up"]').click();
+  await alerts.getByRole('button', { name: 'Add' }).click();
+  await alerts.locator('[data-alert]').waitFor();
+  await page.evaluate(() => window.mockTV.setVolatility(0));
+  await sleep(700);
+  const n = +(await audio()).played;
+  await page.evaluate((l) => window.mockTV.setPrice(l + 10), level);
+  await waitFor(async () => { const a = await audio(); return +a.played > n && a.last === 'priceAlert'; }, { message: 'price alert sound' });
+  await waitFor(async () => (await alerts.locator('[data-alert]').textContent()).includes('Re-arm'), { message: 'alert disarmed' });
+  await page.evaluate(() => window.mockTV.setVolatility(1));
+});
+await check('ambient bed: generated rain runs in the audio frame and switches off', async () => {
+  const p = await openPanel(page, 'sound');
+  await p.locator('button[data-ambient="gen:rain"]').click();
+  await waitFor(() => soundFrame().evaluate(() => !!document.querySelector('body') && globalThis.__tvsAmbient?.() === 'gen:rain'), { message: 'ambient on' });
+  await p.locator('button[data-ambient="none"]').click();
+  await waitFor(() => soundFrame().evaluate(() => globalThis.__tvsAmbient?.() === null), { message: 'ambient off' });
+  assert.equal((await audio()).error, '');
+});
+await check('my sounds: an uploaded audio file can be assigned to an event and plays', async () => {
+  const p = await openPanel(page, 'sound');
+  const zone = p.locator('.sec', { hasText: 'My sounds' }).locator('iframe');
+  const frame = await (await zone.elementHandle()).contentFrame();
+  await frame.locator('input[type=file]').setInputFiles({ name: 'bell.wav', mimeType: 'audio/wav', buffer: wav() });
+  await p.locator('.sec', { hasText: 'My sounds · 1' }).waitFor();
+  const row = p.locator('.row[data-event="tradeExit"]');
+  const val = await row.locator('select').evaluate((s) => [...s.options].find((o) => o.value.startsWith('lib:')).value);
+  await row.locator('select').selectOption(val);
+  const n = +(await audio()).played;
+  await p.locator('button[data-test="tradeExit"]').click();
+  await waitFor(async () => +(await audio()).played > n, { message: 'custom sound played' });
+  assert.equal((await audio()).error, '');
+  await p.locator('input[data-sound-power]').uncheck();
+  await waitFor(async () => (await audio()) === null, { message: 'audio frame removed' });
+});
+function wav() { // 0.3 s 880 Hz PCM tone
+  const sr = 8000, n = sr * 0.3, b = Buffer.alloc(44 + n * 2);
+  b.write('RIFF', 0); b.writeUInt32LE(36 + n * 2, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(sr, 24); b.writeUInt32LE(sr * 2, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 880 * i) / sr) * 12000), 44 + i * 2);
+  return b;
+}
 
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));

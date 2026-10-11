@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TVSuite upload</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; font: 13px/1.4 Inter, ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; color: #e6e9f0; }
+  label { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 100%; padding: 14px; text-align: center;
+    border: 1.5px dashed rgba(255,255,255,.22); border-radius: 12px; background: rgba(255,255,255,.025); cursor: pointer; transition: border-color .15s, background .15s; }
+  label:hover, label.over { border-color: rgba(140,160,255,.8); background: rgba(108,140,255,.09); }
+  b { font-size: 13.5px; } small { color: #8b92a4; } .status { color: #4fe0b2; font-weight: 600; } .status.err { color: #ff8594; }
+  svg { width: 26px; height: 26px; stroke: #a9b4ff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  input { display: none; }
+</style>
+</head>
+<body>
+<label id="zone">
+  <svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 20h16"/></svg>
+  <b id="title">Drop a file or click to choose</b>
+  <small id="hint"></small>
+  <span class="status" id="status"></span>
+  <input id="file" type="file" multiple>
+</label>
+<script src="upload.js"></script>
+</body>
+</html>

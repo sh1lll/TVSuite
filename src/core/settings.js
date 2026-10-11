@@ -2,6 +2,7 @@
 import { storage, withDefaults } from './storage.js';
 import { DEFAULT_REACTIVE } from '../modules/skins/signals.js';
 import { DEFAULT_SESSIONS } from '../modules/sessions/sessions.js';
+import { DEFAULT_SOUND } from '../modules/sound/events.js';
 
 export const SETTINGS_KEY = 'settings';
 
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS = {
     playlist: { enabled: false, minutes: 15, ids: [] }, // rotate through these skin ids on the clock
     seeded: false,          // starter custom skins installed into the library once
   },
+  sound: structuredClone(DEFAULT_SOUND),
   sessions: {
     list: structuredClone(DEFAULT_SESSIONS),
     hud: true,

@@ -76,7 +76,11 @@
         "sandbox.html",
         "sandbox.js",
         "media.html",
-        "media.js"
+        "media.js",
+        "upload.html",
+        "upload.js",
+        "sound.html",
+        "sound.js"
       ],
       "matches": [
         "https://*/*",

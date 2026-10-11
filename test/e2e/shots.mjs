@@ -26,6 +26,15 @@ for (const v of ['studio', 'look', 'smart']) { await p.locator(`.subnav button[d
 await p.locator('.subnav button[data-value="studio"]').click();
 await p.locator('.seg.subnav').nth(1).locator('button[data-value="code"]').click();
 await snap('skins-studio-code');
+await p.locator('.seg.subnav').nth(1).locator('button[data-value="media"]').click();
+await page.waitForTimeout(800);
+await snap('skins-studio-media');
+await p.locator('.tab[data-tab="sound"]').click();
+await snap('tab-sound-off');
+await p.locator('input[data-sound-power]').check();
+await p.locator('label.switch', { hasText: 'Voice announcements' }).click();
+await snap('tab-sound');
+for (const [i, y] of [[1, 700], [2, 1400], [3, 2100]]) { await p.locator('.body').evaluate((b, v) => { b.scrollTop = v; }, y); await snap(`tab-sound-${i}`); }
 for (const t of ['templates', 'sessions', 'tools', 'about']) { await p.locator(`.tab[data-tab="${t}"]`).click(); await snap(`tab-${t}`); }
 console.log('errors:', errs);
 await context.close();
