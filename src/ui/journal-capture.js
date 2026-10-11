@@ -45,7 +45,7 @@ export function setupJournalCapture(app) {
       catch (err) { toast(root, `Journal save failed: ${err.message}`, 'err', 4000); }
     };
     bg.append(el('div', { class: 'modal', style: { width: '460px' } },
-      el('h3', {}, `Journal — ${obs.symbol || 'chart'}${sess ? ` · ${sess.name}` : ''}`),
+      el('h3', {}, `Journal, ${obs.symbol || 'chart'}${sess ? ` · ${sess.name}` : ''}`),
       el('img', { src: image, alt: 'chart capture', style: { width: '100%', borderRadius: '4px', border: '1px solid var(--border)' } }),
       row('Side', side), row('Entry / stop', entry, stop), row('Target', target), row('P&L / contracts', pnl, contracts), row('Tags', tags), note,
       el('div', { class: 'btns', style: { justifyContent: 'space-between' } },

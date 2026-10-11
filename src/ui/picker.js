@@ -40,7 +40,7 @@ export function pickElement({ hint = 'Click the number to read', ignore = [] } =
     Object.assign(box.style, { position: 'fixed', zIndex: 2147483646, pointerEvents: 'none', border: '2px solid #5b8cff', background: 'rgba(91,140,255,.15)', borderRadius: '4px', transition: 'all .05s' });
     const tip = document.createElement('div');
     Object.assign(tip.style, { position: 'fixed', zIndex: 2147483647, left: '50%', top: '12px', transform: 'translateX(-50%)', background: '#0b0e14', color: '#fff', font: '600 13px -apple-system, Segoe UI, sans-serif', padding: '8px 14px', borderRadius: '8px', border: '1px solid #5b8cff', pointerEvents: 'none' });
-    tip.textContent = `${hint} — Esc to cancel`;
+    tip.textContent = `${hint}, Esc to cancel`;
     document.documentElement.append(box, tip);
     let cur = null;
     const skip = (n) => !n || n === box || n === tip || ignore.some((h) => h.contains(n)) || n.closest?.('[id^="tvsuite-"]');
@@ -50,7 +50,7 @@ export function pickElement({ hint = 'Click the number to read', ignore = [] } =
       cur = n;
       const r = n.getBoundingClientRect();
       Object.assign(box.style, { left: `${r.left - 2}px`, top: `${r.top - 2}px`, width: `${r.width + 4}px`, height: `${r.height + 4}px` });
-      tip.textContent = `${(n.textContent || '').trim().slice(0, 40) || n.tagName.toLowerCase()} — click to choose, Esc to cancel`;
+      tip.textContent = `${(n.textContent || '').trim().slice(0, 40) || n.tagName.toLowerCase()}, click to choose, Esc to cancel`;
     };
     const done = (v) => {
       window.removeEventListener('pointermove', move, true); window.removeEventListener('click', click, true); window.removeEventListener('keydown', key, true);

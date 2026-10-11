@@ -1091,6 +1091,26 @@ await check('launcher button can be hidden completely (About tab and popup) and 
   await pop.close();
 });
 
+await check('the TVS button can be dragged anywhere, stays there after a reload, and a plain click still opens the panel', async () => {
+  const fabBox = () => page.locator('#tvsuite-panel-host .fab').boundingBox();
+  if (await page.evaluate(() => !document.getElementById('tvsuite-panel-host').shadowRoot.querySelector('.panel').hidden)) await page.locator('#tvsuite-panel-host .x').click();
+  const b0 = await fabBox();
+  await page.mouse.move(b0.x + 17, b0.y + 17);
+  await page.mouse.down();
+  await page.mouse.move(b0.x + 200, b0.y - 120, { steps: 8 });
+  await page.mouse.up();
+  const b1 = await fabBox();
+  assert.ok(Math.abs(b1.x - (b0.x + 183)) < 4 && Math.abs(b1.y - (b0.y - 137)) < 4, `moved to ${b1.x},${b1.y}`);
+  assert.equal(await page.evaluate(() => !document.getElementById('tvsuite-panel-host').shadowRoot.querySelector('.panel').hidden), false, 'a drag does not open the panel');
+  await waitFor(async () => !!(await context.serviceWorkers()[0].evaluate(async () => (await chrome.storage.local.get('ui:pos'))['ui:pos']?.fx)), { message: 'position saved' });
+  await page.reload();
+  await page.waitForSelector('#tvsuite-panel-host', { state: 'attached' });
+  await waitFor(async () => { const b = await fabBox().catch(() => null); return b && Math.abs(b.x - b1.x) < 4 && Math.abs(b.y - b1.y) < 4; }, { message: 'launcher position restored' });
+  await page.locator('#tvsuite-panel-host .fab').click();
+  await waitFor(() => page.evaluate(() => !document.getElementById('tvsuite-panel-host').shadowRoot.querySelector('.panel').hidden), { message: 'click opens the panel' });
+  await page.locator('#tvsuite-panel-host .x').click();
+});
+
 await check('settings page: every panel tab renders, and a change there reaches the chart tab', async () => {
   const sp = await context.newPage();
   const errs = [];

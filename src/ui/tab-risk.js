@@ -10,7 +10,7 @@ const PRESETS = [
   ['intraday', 'Intraday trailing (Apex-style)', { drawdown: { type: 'intraday' } }],
   ['static', 'Static max loss', { drawdown: { type: 'static' } }],
 ];
-const COLORS = { ok: '#22c55e', warn: '#f7a600', breach: '#f23645' };
+const COLORS = { ok: '#26a69a', warn: '#ff9800', breach: '#f23645' };
 const stop = (n) => { n.addEventListener('keydown', (e) => e.stopPropagation()); return n; };
 
 function meter(pct, color) {
@@ -37,20 +37,20 @@ export function riskTab(app) {
   function today() {
     const c = cfg();
     if (!c.enabled) {
-      return el('div', { class: 'hero', style: { padding: '16px', background: 'linear-gradient(135deg, rgba(34,197,94,.14), rgba(91,140,255,.12))' } },
+      return el('div', { class: 'hero', style: { padding: '16px', background: 'var(--raise)' } },
         el('div', { style: { fontWeight: 700, fontSize: '15px' } }, 'Risk Guard'),
-        el('div', { class: 'note' }, 'Your prop-firm or personal rules — daily loss limit, daily profit target, trailing drawdown, consistency — checked every second. Warns before you break one and can block the chart for the rest of the day.'),
+        el('div', { class: 'note' }, 'Your prop-firm or personal rules (daily loss limit, daily profit target, trailing drawdown, consistency), checked every second. Warns before you break one and can block the chart for the rest of the day.'),
         el('div', { class: 'btns' }, button('Set up my rules', () => { view = 'rules'; render(); }, 'primary', { icon: 'shield', dataset: { riskSetup: '1' } })));
     }
     const r = risk.tick() || risk.last();
     if (!r) return el('div', { class: 'note' }, app.live === false ? 'Live P&L and limit meters are on the panel over your chart. Everything here still applies to them.' : 'Loading…');
     const color = COLORS[r.status];
     const parts = [];
-    parts.push(el('div', { class: 'hero', style: { padding: '14px', background: `linear-gradient(135deg, ${color}26, rgba(91,140,255,.08))`, borderColor: `${color}66` }, dataset: { riskStatus: r.status } },
+    parts.push(el('div', { class: 'hero', style: { padding: '14px', background: `${color}1f`, borderColor: `${color}80` }, dataset: { riskStatus: r.status } },
       el('div', { class: 'row', style: { margin: 0, alignItems: 'flex-end' } },
         el('div', { class: 'grow' },
           el('div', { class: 'note', style: { margin: 0, textTransform: 'uppercase', letterSpacing: '.8px', fontSize: '10px', fontWeight: 700 } }, `${c.accountName || 'Account'} · trading day ${r.day}`),
-          el('div', { style: { fontSize: '28px', fontWeight: 800, color: r.dayTotal < 0 ? '#f23645' : r.dayTotal > 0 ? '#22c55e' : 'inherit', fontVariantNumeric: 'tabular-nums' }, dataset: { dayPnl: String(r.dayTotal) } }, money(r.dayTotal)),
+          el('div', { style: { fontSize: '28px', fontWeight: 800, color: r.dayTotal < 0 ? '#f23645' : r.dayTotal > 0 ? '#26a69a' : 'inherit', fontVariantNumeric: 'tabular-nums' }, dataset: { dayPnl: String(r.dayTotal) } }, money(r.dayTotal)),
           el('div', { class: 'note', style: { margin: 0 } }, `Realized ${money(r.dayPnl)}${r.unrealized ? ` · open ${money(r.unrealized)}` : ''} · balance ${money(r.balance, false)}`)),
         chip(r.status === 'ok' ? 'within rules' : r.status === 'warn' ? 'careful' : 'limit hit', r.status === 'ok' ? 'ok' : r.status === 'warn' ? 'warn' : 'err'))));
     const bars = [];
@@ -78,11 +78,11 @@ export function riskTab(app) {
           const del = el('button', { class: 'iconbtn', title: 'Remove', type: 'button' }, icon('trash'));
           del.addEventListener('click', async () => { await risk.removeTrade(t.id); render(); });
           return el('div', { class: 'row', style: { padding: '0 10px' }, dataset: { trade: t.id } },
-            el('span', { style: { fontWeight: 700, color: t.pnl < 0 ? '#f23645' : '#22c55e', minWidth: '78px' } }, money(t.pnl)),
+            el('span', { style: { fontWeight: 700, color: t.pnl < 0 ? '#f23645' : '#26a69a', minWidth: '78px' } }, money(t.pnl)),
             el('span', { class: 'note grow', style: { margin: 0 } }, [t.symbol, t.contracts ? `${t.contracts} ct` : null, new Date(t.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })].filter(Boolean).join(' · ')), del);
         })) : null));
     } else {
-      parts.push(section('P&L from screen', el('div', { class: 'note' }, `Day P&L: ${r.live.realized == null ? 'not found — re-pick under Rules' : money(r.live.realized)} · Open P&L: ${r.live.unrealized == null ? (c.screen.unrealized ? 'not found' : 'not set') : money(r.live.unrealized)}`)));
+      parts.push(section('P&L from screen', el('div', { class: 'note' }, `Day P&L: ${r.live.realized == null ? 'not found, re-pick under Rules' : money(r.live.realized)} · Open P&L: ${r.live.unrealized == null ? (c.screen.unrealized ? 'not found' : 'not set') : money(r.live.unrealized)}`)));
     }
     parts.push(recapSection());
     if (!r.block) parts.push(el('div', { class: 'btns' }, button('Reset today', async () => { if (confirm('Clear today’s trades, screen readings and fired alerts?')) { await risk.resetDay(); render(); } }, 'sm')));
@@ -109,20 +109,20 @@ export function riskTab(app) {
     const blocked = c.enabled && risk.last()?.block;
     if (blocked) return el('div', { class: 'hero', style: { padding: '16px' }, dataset: { rulesLocked: '1' } }, el('div', { style: { fontWeight: 700 } }, '🔒 Rules are locked while you’re blocked'),
       el('div', { class: 'note' }, 'Loosening a rule after hitting it defeats the point. They unlock at the trading-day reset, or after an override on the lock screen.'));
-    const name = stop(el('input', { type: 'text', placeholder: 'e.g. Lucid 50K Flex — TEST008', value: c.accountName }));
+    const name = stop(el('input', { type: 'text', placeholder: 'e.g. Lucid 50K Flex, TEST008', value: c.accountName }));
     name.addEventListener('change', () => update((s) => { s.risk.accountName = name.value.slice(0, 60); }));
     const tz = stop(el('input', { type: 'text', value: c.tz, style: { maxWidth: '160px' } }));
     tz.addEventListener('change', () => { try { new Intl.DateTimeFormat('en', { timeZone: tz.value }); update((s) => { s.risk.tz = tz.value; }); } catch (_) { toast(root, 'Unknown time zone', 'err'); tz.value = cfg().tz; } });
     const reset = stop(el('input', { type: 'time', value: c.reset, style: { maxWidth: '110px' } }));
     reset.addEventListener('change', () => update((s) => { s.risk.reset = reset.value || '17:00'; }));
     const preset = el('select', { class: 'grow' }, PRESETS.map(([id, label]) => el('option', { value: id }, label)));
-    preset.addEventListener('change', () => { const p = PRESETS.find((x) => x[0] === preset.value)[2]; update((s) => { if (p.drawdown) s.risk.drawdown.type = p.drawdown.type; }); render(); toast(root, 'Rule shape set — fill in your plan’s numbers'); });
+    preset.addEventListener('change', () => { const p = PRESETS.find((x) => x[0] === preset.value)[2]; update((s) => { if (p.drawdown) s.risk.drawdown.type = p.drawdown.type; }); render(); toast(root, 'Rule shape set, fill in your plan’s numbers'); });
     const srcSeg = segmented({ value: c.source, options: [['manual', 'My entries + journal'], ['screen', 'Read from screen']], onChange: (v) => { update((s) => { s.risk.source = v; }); render(); } });
     const pick = (key, label) => button(c.screen[key] ? `Re-pick ${label}` : `Pick ${label} on screen`, async () => {
       app.panel?.hide?.();
       const res = await pickElement({ hint: `Click your ${label}` });
       app.panel?.show?.('risk');
-      if (!res?.selector) { if (res) toast(root, 'Could not make a stable selector for that element — try its number directly', 'err', 4000); return; }
+      if (!res?.selector) { if (res) toast(root, 'Could not make a stable selector for that element, try its number directly', 'err', 4000); return; }
       update((s) => { s.risk.screen[key] = res.selector; });
       toast(root, `${label}: “${res.text}”`);
       render();
@@ -137,14 +137,14 @@ export function riskTab(app) {
         row('Day resets', reset, tz)),
       section('Risk settings (per position)',
         el('div', { class: 'note' }, 'Like your broker’s account-level brackets: TVSuite warns when the open P&L on screen passes them.'),
-        money$('Risk — in $', () => c.bracket.risk, (r, v) => { r.bracket.risk = v; }),
-        money$('Profit — in $', () => c.bracket.profit, (r, v) => { r.bracket.profit = v; })),
+        money$('Risk, in $', () => c.bracket.risk, (r, v) => { r.bracket.risk = v; }),
+        money$('Profit, in $', () => c.bracket.profit, (r, v) => { r.bracket.profit = v; })),
       section('Account settings (daily)',
         money$('Personal Daily Loss Limit (PDLL) $', () => c.pdll, (r, v) => { r.pdll = v; }),
         money$('Personal Daily Profit Target (PDPT) $', () => c.pdpt, (r, v) => { r.pdpt = v; }),
         row('Personal daily action', segmented({ value: c.onLoss, options: [['block', 'Block'], ['warn', 'Warn only']], onChange: (v) => update((s) => { s.risk.onLoss = v; }) })),
         row('When target is hit', segmented({ value: c.onTarget, options: [['block', 'Block'], ['warn', 'Warn only']], onChange: (v) => update((s) => { s.risk.onTarget = v; }) })),
-        el('div', { class: 'note' }, '“Liquidate” isn’t offered: TVSuite can’t see or close positions. Set “Liquidate and Block” in your broker for real enforcement — TVSuite adds the warnings, the lock screen and the record.'),
+        el('div', { class: 'note' }, '“Liquidate” isn’t offered: TVSuite can’t see or close positions. Set “Liquidate and Block” in your broker for real enforcement, TVSuite adds the warnings, the lock screen and the record.'),
         money$('Firm daily loss limit $', () => c.firmDailyLoss, (r, v) => { r.firmDailyLoss = v; }, { hint: 'The tighter of this and your PDLL applies.' })),
       section('Max loss / evaluation',
         el('div', { class: 'note', style: { margin: '8px 0 4px' } }, 'Max loss drawdown'),
@@ -160,7 +160,7 @@ export function riskTab(app) {
           el('div', { class: 'btns' }, pick('realized', 'day P&L'), pick('unrealized', 'open P&L')),
           c.screen.realized ? el('div', { class: 'note' }, el('code', {}, c.screen.realized)) : null]
           : el('div', { class: 'note' }, 'Add trades on the Today view, or enter a P&L when you journal a trade.')),
-      el('div', { class: 'note' }, 'Use the numbers from your firm’s current rules page — TVSuite doesn’t ship firm numbers, because they change.'),
+      el('div', { class: 'note' }, 'Use the numbers from your firm’s current rules page, TVSuite doesn’t ship firm numbers, because they change.'),
     ];
   }
 
@@ -175,7 +175,7 @@ export function riskTab(app) {
     const max = Math.max(1, ...last7.map((k) => days[k].total));
     const sessionsList = [...s.sessions.list.map((x) => [x.id, x.name]), ['none', 'Outside sessions']];
     return [
-      el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(91,140,255,.16), rgba(154,107,255,.1))' } },
+      el('div', { class: 'hero', style: { padding: '14px', background: 'var(--raise)' } },
         el('div', { class: 'note', style: { margin: 0, textTransform: 'uppercase', letterSpacing: '.8px', fontSize: '10px', fontWeight: 700 } }, 'Chart time today'),
         el('div', { style: { fontSize: '28px', fontWeight: 800 }, dataset: { chartTime: String(d.total) } }, formatDuration(d.total)),
         c.dailyLimitMin ? meter((d.total / (c.dailyLimitMin * 60)) * 100, d.total >= c.dailyLimitMin * 60 ? COLORS.warn : '#5b8cff') : null),

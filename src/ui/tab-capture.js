@@ -53,7 +53,7 @@ export function captureTab(app) {
         button('Download', () => { if (last) { const a = el('a', { href: last.toDataURL('image/png'), download: `tvsuite-${Date.now()}.png` }); document.body.append(a); a.click(); a.remove(); } }, '', { icon: 'download' }),
         button('Refresh', paint, '', { icon: 'refresh' }),
         button('Discord', send('discord'), 'sm', { dataset: { send: 'discord' } }), button('Telegram', send('telegram'), 'sm')),
-      el('div', { class: 'note' }, `Alt+Shift+S copies a card from anywhere on the chart. The skin isn't included — just your chart, framed.`),
+      el('div', { class: 'note' }, `Alt+Shift+S copies a card from anywhere on the chart. The skin isn't included, just your chart, framed.`),
       section('Style', themes,
         row('Aspect', segmented({ value: c.aspect, options: [['auto', 'Fit'], ['16:9', '16:9'], ['1:1', '1:1'], ['4:5', '4:5']], onChange: (v) => set((cc) => { cc.aspect = v; }) })),
         row('Title', el('div', { class: 'grow' }, title)), row('Watermark', el('div', { class: 'grow' }, mark)),
@@ -71,7 +71,7 @@ export function captureTab(app) {
     if (!recList && app.recordings) app.recordings.list().then((l) => { recList = l; if (view === 'recorder' && wrap.isConnected) render(); });
     const status = el('span', { dataset: { recState: recording ? 'on' : 'off' } }, recording ? chip(`● REC ${Math.floor(app.recorder.elapsed())}s`, 'err') : chip('idle'));
     return [
-      el('div', { class: 'hero', style: { padding: '14px', background: recording ? 'linear-gradient(135deg, rgba(242,54,69,.25), rgba(91,140,255,.08))' : 'linear-gradient(135deg, rgba(91,140,255,.16), rgba(154,107,255,.1))' } },
+      el('div', { class: 'hero', style: { padding: '14px', background: recording ? 'rgba(242,54,69,.14)' : 'var(--raise)', borderColor: recording ? 'rgba(242,54,69,.5)' : '' } },
         el('div', { class: 'row', style: { margin: 0 } },
           el('div', { class: 'grow' }, el('div', { style: { fontWeight: 700, fontSize: '14px' } }, 'Trade recorder'),
             el('div', { class: 'note', style: { margin: 0 } }, mime ? `Records the chart itself (no screen-share prompt) as ${mime.includes('mp4') ? 'MP4' : 'WebM'}` : 'This browser can’t record video')),
@@ -83,7 +83,7 @@ export function captureTab(app) {
         c.auto ? [
           toggle({ label: 'Stop after the exit', checked: c.stopOnExit, onChange: (v) => set((x) => { x.stopOnExit = v; }) }),
           slider({ label: 'Keep before entry', value: c.preRollSec, min: 0, max: 60, step: 5, fmt: (v) => (v ? `${v}s before` : 'off'), onInput: (v) => set((x) => { x.preRollSec = v; }) }),
-          el('div', { class: 'note', dataset: { prerollState: app.recorder.armed() ? 'ready' : 'off' } }, c.mic ? 'Pre-roll is off while microphone narration is on.' : app.recorder.armed() ? `Pre-roll ready — keeping the last ${app.recorder.armed().preRollSec}s (${app.recorder.armed().mime.includes('mp4') ? 'MP4' : 'WebM'}).` : app.recorder.armError() ? `Pre-roll unavailable: ${app.recorder.armError()}` : c.preRollSec ? 'Pre-roll starts in a moment…' : 'Pre-roll off.'),
+          el('div', { class: 'note', dataset: { prerollState: app.recorder.armed() ? 'ready' : 'off' } }, c.mic ? 'Pre-roll is off while microphone narration is on.' : app.recorder.armed() ? `Pre-roll ready, keeping the last ${app.recorder.armed().preRollSec}s (${app.recorder.armed().mime.includes('mp4') ? 'MP4' : 'WebM'}).` : app.recorder.armError() ? `Pre-roll unavailable: ${app.recorder.armError()}` : c.preRollSec ? 'Pre-roll starts in a moment…' : 'Pre-roll off.'),
           slider({ label: 'Keep recording', value: c.postRollSec, min: 0, max: 120, step: 5, fmt: (v) => `${v}s after exit`, onInput: (v) => set((x) => { x.postRollSec = v; }) }),
           toggle({ label: 'Use open P&L from Risk Guard', hint: 'When it reads open P&L from the screen: ≠ 0 means in a trade', checked: c.useOpenPnl, onChange: (v) => set((x) => { x.useOpenPnl = v; }) }),
           toggle({ label: 'Also record TradingView alerts', checked: c.alsoOn.tvAlert, onChange: (v) => set((x) => { x.alsoOn.tvAlert = v; }) }),
@@ -112,7 +112,7 @@ export function captureTab(app) {
   function mini() {
     const st = app.mini.state();
     const media = (getSettings().skins.library || []).filter((k) => k.kind === 'media');
-    const sel = el('select', { class: 'grow' }, media.length ? media.map((m) => el('option', { value: m.url }, m.name)) : el('option', { value: '' }, 'No media yet — add some in Skins → Studio → Media'));
+    const sel = el('select', { class: 'grow' }, media.length ? media.map((m) => el('option', { value: m.url }, m.name)) : el('option', { value: '' }, 'No media yet, add some in Skins → Studio → Media'));
     const link = stop(el('input', { type: 'text', placeholder: 'YouTube, Twitch, or a link to an .mp4 / .gif', dataset: { playerLink: '1' } }));
     const guard = (fn) => () => fn().then(() => setTimeout(render, 300), (err) => toast(root, err.message, 'err', 4500));
     return [
@@ -134,7 +134,7 @@ export function captureTab(app) {
     const sh = getSettings().share;
     const kinds = [['cards', 'Screenshot cards (when you press Send / Alt+Shift+S)'], ['journal', 'Journal entries'], ['risk', 'Risk limit hits'], ['recordings', 'Trade recordings (Discord ≤ 10 MB, Telegram ≤ 50 MB)'], ['recap', 'Session / day recaps']];
     return [
-      el('div', { class: 'note' }, 'Your Discord webhook and Telegram bot are set up in Options and stay in the extension’s background — never on the page.'),
+      el('div', { class: 'note' }, 'Your Discord webhook and Telegram bot are set up in Options and stay in the extension’s background, never on the page.'),
       app.openOptions ? el('div', { class: 'btns' }, button('Set up Discord / Telegram', () => app.openOptions('share'), 'primary', { icon: 'share' })) : null,
       ['discord', 'telegram'].map((t) => section(t === 'discord' ? 'Discord' : 'Telegram',
         toggle({ label: `Send to ${t === 'discord' ? 'Discord' : 'Telegram'}`, checked: sh[t].enabled, onChange: (v) => { update((s) => { s.share[t].enabled = v; }, { silent: true }); render(); } }),

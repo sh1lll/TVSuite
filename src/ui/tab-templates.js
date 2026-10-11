@@ -48,7 +48,7 @@ export function templatesTab(app) {
       const res = await fetchLive();
       useSource(state.live, 'Live account');
       const c = countEntries(state.live);
-      setMsg(`Fetched ${c.themes} themes and ${c.templates} drawing templates${res.errors.length ? ` (${res.errors.length} errors — see console)` : ''}.`, res.errors.length ? 'err' : 'ok');
+      setMsg(`Fetched ${c.themes} themes and ${c.templates} drawing templates${res.errors.length ? ` (${res.errors.length} errors, see console)` : ''}.`, res.errors.length ? 'err' : 'ok');
       if (res.errors.length) console.warn('[TVSuite] template fetch errors', res.errors);
     }),
     snapshot: () => busy('Taking snapshot…', async () => {
@@ -189,7 +189,7 @@ export function templatesTab(app) {
           button('Export selected…', actions.exportFile, '', dis), button('Import file…', actions.importFile, '', dis))),
       el('div', { class: 'progress' }, el('i', { style: { width: `${Math.round(state.progress * 100)}%` } })),
       state.msg ? el('div', { class: `note ${state.msgKind}` }, state.msg) : null,
-      section(state.source ? `${state.sourceLabel} — ${c.themes} themes · ${c.templates} templates` : 'Templates', listView()),
+      section(state.source ? `${state.sourceLabel}, ${c.themes} themes · ${c.templates} templates` : 'Templates', listView()),
       state.source ? section('Restore selected',
         select({ label: 'If name exists', value: state.strategy, options: [['overwrite', 'Overwrite'], ['skip', 'Keep existing (skip)'], ['rename', 'Save as "name (restored)"']], onChange: (v) => { state.strategy = v; } }),
         el('div', { class: 'btns' }, button('Compare with live', actions.compare, '', dis), button('Restore to TradingView…', actions.restore, 'green', dis))) : null,
@@ -198,7 +198,7 @@ export function templatesTab(app) {
         toggle({ label: 'Snapshot my templates automatically while a chart is open', checked: getSettings().templates.autoBackup.enabled, onChange: (v) => app.update((st) => { st.templates.autoBackup.enabled = v; }) }),
         select({ label: 'Every', value: String(getSettings().templates.autoBackup.everyHours), options: [['6', '6 hours'], ['24', 'day'], ['168', 'week']], onChange: (v) => app.update((st) => { st.templates.autoBackup.everyHours = +v; }) }),
         el('div', { class: 'note' }, 'Read-only: fetches and stores a snapshot; skips unchanged ones. Keeps the newest ' + getSettings().templates.keepSnapshots + ' snapshots.')),
-      section('Danger zone', button('Factory reset — delete all templates & themes…', actions.factoryReset, 'danger', dis)),
+      section('Danger zone', button('Factory reset: delete all templates & themes…', actions.factoryReset, 'danger', dis)),
       el('div', { class: 'note' }, 'Uses TradingView\'s own (undocumented) web endpoints with your session, from this tab. Compatible with victornpb/vngbh backup files.'),
     );
   }

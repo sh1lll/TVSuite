@@ -32,14 +32,14 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     status('aiStatus', 'Generating…');
     const res = await chrome.runtime.sendMessage({ type: 'ai.generate', prompt: 'calm ocean at night' });
     if (res?.error) status('aiStatus', res.error, 'err');
-    else status('aiStatus', `OK — got "${res.skin.name}" (${res.skin.code.length} chars of code).`, 'ok');
+    else status('aiStatus', `OK, got "${res.skin.name}" (${res.skin.code.length} chars of code).`, 'ok');
   };
 
   async function renderSites() {
     const s = await loadSettings();
     $('sites').replaceChildren(...s.sites.map((site, i) => {
       const row = document.createElement('div'); row.className = 'site';
-      const label = document.createElement('span'); label.textContent = `${site.host} — ${site.kind === 'generic' ? `generic (${site.selector})` : 'TradingView embed'}`;
+      const label = document.createElement('span'); label.textContent = `${site.host} · ${site.kind === 'generic' ? `generic (${site.selector})` : 'TradingView embed'}`;
       const del = document.createElement('button'); del.textContent = 'Remove';
       del.onclick = async () => {
         const fresh = await loadSettings();
@@ -95,7 +95,7 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     try {
       const r = await (await fetch(`https://api.telegram.org/bot${token}/getUpdates`)).json();
       const chats = [...new Map((r.result || []).map((u) => u.message?.chat || u.channel_post?.chat).filter(Boolean).map((c) => [c.id, c])).values()];
-      if (!chats.length) return status('shareStatus', 'No messages yet — send your bot a message, then try again.', 'err');
+      if (!chats.length) return status('shareStatus', 'No messages yet, send your bot a message, then try again.', 'err');
       $('tgChat').value = String(chats[chats.length - 1].id);
       status('shareStatus', `Found: ${chats.map((c) => `${c.title || c.username || c.first_name} (${c.id})`).join(', ')}. Press Save.`, 'ok');
     } catch (err) { status('shareStatus', `Telegram: ${err.message}`, 'err'); }
@@ -142,9 +142,9 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     const { devices } = await lights();
     $('lightDevices').replaceChildren(...devices.map((d) => {
       const row = document.createElement('div'); row.className = 'site';
-      const label = document.createElement('span'); label.textContent = `${{ hue: 'Hue', ha: 'Home Assistant', wled: 'WLED', govee: 'Govee' }[d.type]} — ${d.bridge || d.base || d.devices || ''}`;
+      const label = document.createElement('span'); label.textContent = `${{ hue: 'Hue', ha: 'Home Assistant', wled: 'WLED', govee: 'Govee' }[d.type]} · ${d.bridge || d.base || d.devices || ''}`;
       const test = document.createElement('button'); test.textContent = 'Test';
-      test.onclick = async () => { const r = await chrome.runtime.sendMessage({ type: 'lights.apply', test: true, state: { on: true, rgb: [91, 140, 255], bri: 0.8, flash: true } }); const mine = r?.results?.find((x) => x.id === d.id); status('lightStatus', mine?.ok ? 'Sent — your light should flash blue.' : `Failed: ${mine?.error || r?.error}`, mine?.ok ? 'ok' : 'err'); };
+      test.onclick = async () => { const r = await chrome.runtime.sendMessage({ type: 'lights.apply', test: true, state: { on: true, rgb: [91, 140, 255], bri: 0.8, flash: true } }); const mine = r?.results?.find((x) => x.id === d.id); status('lightStatus', mine?.ok ? 'Sent, your light should flash blue.' : `Failed: ${mine?.error || r?.error}`, mine?.ok ? 'ok' : 'err'); };
       const del = document.createElement('button'); del.textContent = 'Remove';
       del.onclick = async () => { const cur = await lights(); cur.devices = cur.devices.filter((x) => x.id !== d.id); await chrome.storage.local.set({ [LKEY]: cur }); renderLights(); };
       row.append(label, test, del); return row;
@@ -189,7 +189,7 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     const s = await loadSettings();
     $('mediaList').replaceChildren(...items.map((m) => {
       const row = document.createElement('div'); row.className = 'site';
-      const label = document.createElement('span'); label.textContent = `${m.name} — ${m.type}, ${(m.size / 1048576).toFixed(1)} MB`;
+      const label = document.createElement('span'); label.textContent = `${m.name} · ${m.type} · ${(m.size / 1048576).toFixed(1)} MB`;
       const inLib = s.skins.library.some((x) => x.id === `media-${m.id}`);
       const use = document.createElement('button'); use.textContent = 'Use as skin';
       use.onclick = async () => {

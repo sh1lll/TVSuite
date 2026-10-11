@@ -41,10 +41,10 @@ export function soundTab(app) {
     statusEl = el('span');
     const power = el('input', { type: 'checkbox', class: 'sw', checked: cfg.enabled, dataset: { soundPower: '1' } });
     power.addEventListener('change', () => { update((st) => { st.sound.enabled = power.checked; }); render(); });
-    return el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(91,140,255,.18), rgba(154,107,255,.12))' } },
+    return el('div', { class: 'hero', style: { padding: '14px', background: 'var(--raise)' } },
       el('div', { class: 'row', style: { margin: 0 } },
         icon(sound.muted() ? 'mute' : 'sound'),
-        el('div', { class: 'grow' }, el('div', { style: { fontWeight: 700, fontSize: '14px' } }, 'Sound'), el('div', { class: 'note', style: { margin: 0 } }, cfg.enabled ? `Ambient, trade and market sounds · mute ${cfg.hotkeys.mute}` : 'Off — turn on for trade, session and price sounds')),
+        el('div', { class: 'grow' }, el('div', { style: { fontWeight: 700, fontSize: '14px' } }, 'Sound'), el('div', { class: 'note', style: { margin: 0 } }, cfg.enabled ? `Ambient, trade and market sounds · mute ${cfg.hotkeys.mute}` : 'Off, turn on for trade, session and price sounds')),
         statusEl, power),
       cfg.enabled ? slider({ label: 'Master volume', value: cfg.volume, min: 0, max: 1, step: 0.01, fmt: (v) => `${Math.round(v * 100)}%`, onInput: (v) => update((st) => { st.sound.volume = v; }) }) : null);
   }
@@ -111,7 +111,7 @@ export function soundTab(app) {
       render();
     };
     return section(`Price alerts${sym ? ` · ${sym}` : ''}`,
-      el('div', { class: 'note' }, 'Local alerts read the price on screen; they work while this chart is open — no TradingView alert slots used.'),
+      el('div', { class: 'note' }, 'Local alerts read the price on screen; they work while this chart is open, no TradingView alert slots used.'),
       el('div', { class: 'row' }, el('div', { class: 'grow' }, level), button('Add', add, 'primary', { icon: 'plus' })),
       row('Trigger', dirSeg),
       el('div', { class: 'row' }, el('label', { class: 'switch' }, el('span', { class: 'txt' }, 'Fire once, then disarm'), once)),
@@ -146,7 +146,7 @@ export function soundTab(app) {
         const del = el('button', { class: 'iconbtn', title: 'Remove', type: 'button' }, icon('trash'));
         del.addEventListener('click', () => { update((st) => { st.sound.library = st.sound.library.filter((y) => y.id !== x.id); }); render(); });
         return el('div', { class: 'row', style: { padding: '0 10px' } }, el('span', { class: 'nm grow' }, x.name), chip(x.kind === 'local' ? 'file' : 'link'), play, del);
-      })) : el('div', { class: 'note' }, 'Use your own clips for any event — a bell for entries, a cheer for take-profits, a café loop as ambient.'));
+      })) : el('div', { class: 'note' }, 'Use your own clips for any event, a bell for entries, a cheer for take-profits, a café loop as ambient.'));
   }
 
   function detectionSection(cfg) {
@@ -164,7 +164,7 @@ export function soundTab(app) {
 
   function notifySection(cfg) {
     return section('Desktop notifications',
-      el('div', { class: 'note' }, cfg.notify ? 'On — events also show a system notification while this tab is in the background.' : 'Get a system notification for these events while the chart tab is in the background.'),
+      el('div', { class: 'note' }, cfg.notify ? 'On, events also show a system notification while this tab is in the background.' : 'Get a system notification for these events while the chart tab is in the background.'),
       app.openOptions ? el('div', { class: 'btns' }, button(cfg.notify ? 'Change in Options' : 'Turn on in Options', () => app.openOptions('notify'), 'sm')) : null);
   }
 
@@ -175,10 +175,10 @@ export function soundTab(app) {
     const color = (val, onChange, data) => { const i = el('input', { type: 'color', value: val, dataset: data || {}, style: { width: '38px', height: '26px', padding: 0, border: 0, background: 'none' } }); i.addEventListener('change', () => onChange(i.value)); return i; };
     const EV = [['tradeEntry', 'Trade entered (flash)'], ['tradeExit', 'Trade closed (flash)'], ['alert', 'Alert / price level (flash)'], ['riskTarget', 'Daily target (flash)'], ['riskWarn', 'Risk warning (hold)'], ['riskBreach', 'Risk limit hit (hold)'], ['calm', 'Calm mode (hold)']];
     return [
-      el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(247,166,0,.16), rgba(91,140,255,.1))' } },
+      el('div', { class: 'hero', style: { padding: '14px', background: 'var(--raise)' } },
         toggle({ label: 'Room lighting', hint: 'Philips Hue, Home Assistant (Govee LAN, LIFX, Nanoleaf…), WLED, Govee cloud', checked: L.enabled, onChange: (v) => set((x) => { x.enabled = v; }, true) }),
         el('div', { class: 'btns' }, app.openOptions ? button('Set up devices', () => app.openOptions('lights'), 'sm', { icon: 'sliders' }) : null,
-          button('Test', async () => { const r = await app.lights.test(L.fixedColor); const res = r?.results || []; toast(root, !res.length ? 'No devices yet — add them in Options' : res.every((x) => x.ok) ? 'Lights flashed' : `Failed: ${res.filter((x) => !x.ok).map((x) => x.error).join('; ')}`, !res.length || res.some((x) => !x.ok) ? 'warn' : 'ok', 4000); }, 'sm', { dataset: { lightsTest: '1' } }),
+          button('Test', async () => { const r = await app.lights.test(L.fixedColor); const res = r?.results || []; toast(root, !res.length ? 'No devices yet, add them in Options' : res.every((x) => x.ok) ? 'Lights flashed' : `Failed: ${res.filter((x) => !x.ok).map((x) => x.error).join('; ')}`, !res.length || res.some((x) => !x.ok) ? 'warn' : 'ok', 4000); }, 'sm', { dataset: { lightsTest: '1' } }),
           button('Off', () => app.lights.off(), 'sm'))),
       L.enabled ? [
         section('Base colour',
@@ -203,8 +203,8 @@ export function soundTab(app) {
     box.addEventListener('keydown', async (e) => { e.stopPropagation(); if (e.key === 'Enter' && box.value.trim()) { const t = box.value; box.value = ''; await app.voice.run(t); } });
     const reply = el('div', { class: 'note', dataset: { voiceReply: '1' } }, lastReply || '');
     return [
-      el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(154,107,255,.18), rgba(91,140,255,.1))' } },
-        toggle({ label: 'Voice commands', hint: app.voice.supported ? `Press ${V.hotkey} and speak. Chrome sends the audio to Google for recognition unless on-device recognition is available.` : 'This browser has no speech recognition — the command box still works', checked: V.enabled, onChange: (v) => set((x) => { x.enabled = v; }, true) }),
+      el('div', { class: 'hero', style: { padding: '14px', background: 'var(--raise)' } },
+        toggle({ label: 'Voice commands', hint: app.voice.supported ? `Press ${V.hotkey} and speak. Chrome sends the audio to Google for recognition unless on-device recognition is available.` : 'This browser has no speech recognition, the command box still works', checked: V.enabled, onChange: (v) => set((x) => { x.enabled = v; }, true) }),
         V.enabled && app.voice.supported ? el('div', { class: 'btns' }, button(app.voice.state().listening ? 'Listening… (stop)' : V.mode === 'wake' ? 'Start listening' : 'Speak a command', () => { app.voice.listen(); setTimeout(render, 300); }, 'primary', { icon: 'sound' })) : null),
       section('Command box', el('div', { class: 'row' }, el('div', { class: 'grow' }, box)), reply,
         el('div', { class: 'note' }, 'Works without a microphone too. Try: show N Q five minute · journal this · screenshot · start recording · log a loss of 200 · alert at 21500 · what’s my P&L · when does London open · next skin · mute.')),

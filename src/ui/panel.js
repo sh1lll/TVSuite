@@ -29,7 +29,7 @@ export async function createPanel(app) {
   for (const type of ['keydown', 'keyup', 'keypress']) shadow.addEventListener(type, (e) => { if (isTypingTarget(e)) e.stopPropagation(); });
 
   const pos = (await storage.get(POS_KEY)) || { x: 52, y: null };
-  const fab = el('div', { class: 'fab', title: `TVSuite (${app.getSettings().ui.panelHotkey})`, role: 'button', tabindex: '0', 'aria-label': 'Open TVSuite' }, brandMark());
+  const fab = el('div', { class: 'fab', title: `TVSuite (${app.getSettings().ui.panelHotkey}). Drag to move.`, role: 'button', tabindex: '0', 'aria-label': 'Open TVSuite' }, brandMark());
   const body = el('div', { class: 'body' });
   const tabsBar = el('div', { class: 'tabs' });
   const panel = el('div', { class: 'panel', hidden: true },
@@ -39,13 +39,36 @@ export async function createPanel(app) {
   root.append(fab, panel);
 
   const applyFab = () => { fab.style.display = app.getSettings().ui.fab === false ? 'none' : ''; };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  function placeFab() {
+    Object.assign(fab.style, { left: `${clamp(pos.fx ?? 9, 0, window.innerWidth - 34)}px`, top: `${clamp(pos.fy ?? window.innerHeight - 110, 0, window.innerHeight - 34)}px` });
+  }
   function place() {
-    const y = pos.y ?? window.innerHeight - 110;
-    Object.assign(fab.style, { left: '9px', top: `${Math.max(40, Math.min(window.innerHeight - 44, y))}px` });
+    placeFab();
     const ph = Math.min(window.innerHeight * 0.82, 760);
-    Object.assign(panel.style, { left: `${Math.max(4, Math.min(window.innerWidth - 428, pos.x))}px`, top: `${Math.max(4, Math.min(window.innerHeight - ph - 4, (pos.py ?? window.innerHeight - ph - 60)))}px` });
+    Object.assign(panel.style, { left: `${Math.max(4, Math.min(window.innerWidth - 492, pos.x))}px`, top: `${Math.max(4, Math.min(window.innerHeight - ph - 4, (pos.py ?? window.innerHeight - ph - 60)))}px` });
   }
   window.addEventListener('resize', place);
+
+  // Drag the launcher anywhere on screen; a plain click still opens the panel.
+  let justDragged = false;
+  fab.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const r = fab.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top, sx = e.clientX, sy = e.clientY;
+    let moved = false;
+    fab.setPointerCapture?.(e.pointerId);
+    const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+      moved = true; fab.classList.add('drag');
+      pos.fx = ev.clientX - dx; pos.fy = ev.clientY - dy; placeFab();
+    };
+    const up = () => {
+      fab.removeEventListener('pointermove', move); fab.removeEventListener('pointerup', up); fab.removeEventListener('pointercancel', up);
+      fab.classList.remove('drag');
+      if (moved) { justDragged = true; setTimeout(() => { justDragged = false; }, 0); storage.set(POS_KEY, pos); }
+    };
+    fab.addEventListener('pointermove', move); fab.addEventListener('pointerup', up); fab.addEventListener('pointercancel', up);
+  });
 
   // Drag the panel by its header.
   const head = panel.querySelector('.head');
@@ -83,7 +106,7 @@ export async function createPanel(app) {
     if (open) { showTab(tab || current); place(); }
     app.update((s) => { s.ui.panelOpen = open; }, { silent: true });
   }
-  fab.addEventListener('click', () => setOpen(panel.hidden));
+  fab.addEventListener('click', () => { if (!justDragged) setOpen(panel.hidden); });
   fab.addEventListener('keydown', (e) => { if (e.key === 'Enter') setOpen(panel.hidden); });
   app.bus.on('panel:open', (tab) => setOpen(true, tab));
 

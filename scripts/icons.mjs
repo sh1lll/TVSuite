@@ -19,21 +19,19 @@ export function png(size, pixel) {
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr[8] = 8; ihdr[9] = 6;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
-// Rounded dark tile, aurora gradient band, and three candles.
+// Flat blue tile with three candles (TradingView green and red would clash with the brand colour, so they are white).
 function pixel(x, y, n) {
-  const u = (x + 0.5) / n, v = (y + 0.5) / n, r = 0.2, cx = Math.min(Math.max(u, r), 1 - r), cy = Math.min(Math.max(v, r), 1 - r);
+  const u = (x + 0.5) / n, v = (y + 0.5) / n, r = 0.16, cx = Math.min(Math.max(u, r), 1 - r), cy = Math.min(Math.max(v, r), 1 - r);
   const d = Math.hypot(u - cx, v - cy);
   if (d > r) return [0, 0, 0, 0];
   const edge = Math.max(0, Math.min(1, (r - d) * n));
-  let col = [19, 23, 34];
-  const band = Math.exp(-(((v - 0.42 - 0.12 * Math.sin(u * 5)) / 0.16) ** 2));
-  col = col.map((c, i) => c + band * [40, 210, 160][i] * (1 - u * 0.5) + band * [120, 40, 255][i] * u * 0.5);
-  const candles = [[0.3, 0.45, 0.78, [8, 153, 129]], [0.5, 0.3, 0.7, [242, 54, 69]], [0.7, 0.22, 0.6, [8, 153, 129]]];
-  for (const [cx2, top, bot, c] of candles) {
-    if (Math.abs(u - cx2) < 0.07 && v > top && v < bot) col = c;
-    else if (Math.abs(u - cx2) < 0.018 && v > top - 0.08 && v < bot + 0.08) col = c;
+  let col = [41, 98, 255];
+  const candles = [[0.3, 0.42, 0.74], [0.5, 0.28, 0.72], [0.7, 0.2, 0.6]];
+  for (const [cx2, top, bot] of candles) {
+    if (Math.abs(u - cx2) < 0.065 && v > top && v < bot) col = [255, 255, 255];
+    else if (Math.abs(u - cx2) < 0.018 && v > top - 0.09 && v < bot + 0.09) col = [255, 255, 255];
   }
-  return [...col.map((c) => Math.min(255, Math.round(c))), Math.round(255 * edge)];
+  return [...col, Math.round(255 * edge)];
 }
 export function writeIcons(dir) {
   mkdirSync(dir, { recursive: true });

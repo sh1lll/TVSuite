@@ -189,7 +189,7 @@ export function skinsTab(app) {
         row('Based on', baseSel),
         ...controls,
         el('div', { class: 'btns' },
-          button('Try on chart', () => { skins.preview(record()); toast(root, 'Previewing on the chart — save to keep it', 'warn'); }, '', { icon: 'play' }),
+          button('Try on chart', () => { skins.preview(record()); toast(root, 'Previewing on the chart, save to keep it', 'warn'); }, '', { icon: 'play' }),
           button(studio.editing ? 'Update skin' : 'Save to My skins', save, 'primary', { icon: 'check' }),
           button('Reset', () => { studio.params = null; render(); }, 'ghost'))),
     ];
@@ -199,7 +199,7 @@ export function skinsTab(app) {
   function studioMedia() {
     const fit = studio.fit || 'cover';
     const fitSeg = segmented({ value: fit, options: [['cover', 'Fill'], ['contain', 'Fit'], ['fill', 'Stretch']], onChange: (v) => { studio.fit = v; } });
-    const link = el('input', { type: 'text', placeholder: 'Paste a link — .mp4 .gif .png, Giphy, Imgur…' });
+    const link = el('input', { type: 'text', placeholder: 'Paste a link, .mp4 .gif .png, Giphy, Imgur…' });
     link.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') addLink(); });
     const msg = el('div', { class: 'note' });
     function addLink() {
@@ -229,7 +229,7 @@ export function skinsTab(app) {
         msg,
         row('Name', nameInput),
         row('Framing', fitSeg),
-        el('div', { class: 'note' }, 'Files stay in this browser. Videos play muted and loop; adjust speed, dim and blur in Look. Use a direct file link — YouTube pages can\'t be played as a background.')),
+        el('div', { class: 'note' }, 'Files stay in this browser. Videos play muted and loop; adjust speed, dim and blur in Look. Use a direct file link, YouTube pages can\'t be played as a background.')),
     ];
   }
 
@@ -252,7 +252,7 @@ export function skinsTab(app) {
     };
     return [
       section('Write a skin',
-        el('div', { class: 'note' }, 'Canvas skins define draw(ctx, api); shaders define mainImage(). Your code runs only in the sandboxed worker — errors show in the status chip above.'),
+        el('div', { class: 'note' }, 'Canvas skins define draw(ctx, api); shaders define mainImage(). Your code runs only in the sandboxed worker, errors show in the status chip above.'),
         row('Name', nameInput),
         row('Template', tplSel),
         segmented({ value: studio.codeKind, options: [['canvas', 'Canvas (JS)', 'code'], ['shader', 'Shader (GLSL)', 'sparkle']], onChange: (v) => { studio.codeKind = v; } }),
@@ -334,11 +334,11 @@ export function skinsTab(app) {
             if (choice === 'paste') { const t = await prompt(root, { title: 'Import skin', text: 'Paste a TVSKIN1 link or skin JSON.', multiline: true }); if (t) importSkin(t); }
             else if (choice === 'file') { const f = await pickFile('.json,application/json'); if (f) importSkin(f.text); }
           }, '', { icon: 'upload' }),
-          button('Image / video', () => { Object.assign(studio, { mode: 'media', editing: null, name: '' }); setView('studio'); }, '', { icon: 'film', title: 'Use your own image, GIF or video — file or link' }),
+          button('Image / video', () => { Object.assign(studio, { mode: 'media', editing: null, name: '' }); setView('studio'); }, '', { icon: 'film', title: 'Use your own image, GIF or video, file or link' }),
           button('Share current', async () => {
             const a = cfg.active; if (!a) return;
             const rec = a.kind === 'builtin' ? { ...a, params: { ...(a.params || {}), ...(cfg.params[a.id || a.base] || {}) } } : a;
-            try { await copyText(await skinShareLink(rec)); toast(root, 'Link copied — paste it anywhere'); } catch (err) { toast(root, err.message, 'err'); }
+            try { await copyText(await skinShareLink(rec)); toast(root, 'Link copied, paste it anywhere'); } catch (err) { toast(root, err.message, 'err'); }
           }, '', { icon: 'share' }))),
       section('Built-in',
         el('div', { class: 'grid', dataset: { lib: 'builtin' } }, ALL_BUILTINS.map((b) => card(builtinRecord(b))))),
@@ -410,7 +410,7 @@ export function skinsTab(app) {
     const pinned = sym && cfg.perSymbol?.[sym];
     return [
       section('React to the chart',
-        toggle({ label: 'Reactive', hint: 'Reads the price already on screen, locally — nothing leaves your browser', checked: cfg.reactive.enabled, onChange: (v) => { update((st) => { st.skins.reactive.enabled = v; }); render(); } }),
+        toggle({ label: 'Reactive', hint: 'Reads the price already on screen, locally. Nothing leaves your browser', checked: cfg.reactive.enabled, onChange: (v) => { update((st) => { st.skins.reactive.enabled = v; }); render(); } }),
         cfg.reactive.enabled ? [
           slider({ label: 'Range → energy', value: cfg.reactive.rangeGain, min: 0, max: 3, step: 0.1, onInput: (v) => update((st) => { st.skins.reactive.rangeGain = v; }) }),
           slider({ label: 'Speed → motion', value: cfg.reactive.velocityGain, min: 0, max: 3, step: 0.1, onInput: (v) => update((st) => { st.skins.reactive.velocityGain = v; }) }),
@@ -420,7 +420,7 @@ export function skinsTab(app) {
           signalsEl,
         ] : null),
       section('Session themes',
-        toggle({ label: 'Switch skins at session opens', hint: 'Tokyo / London / New York, by the clock — set each session\'s skin in the Sessions tab', checked: cfg.sessionThemes, onChange: (v) => update((st) => { st.skins.sessionThemes = v; }) })),
+        toggle({ label: 'Switch skins at session opens', hint: 'Tokyo, London and New York by the clock. Set each session\'s skin in the Sessions tab', checked: cfg.sessionThemes, onChange: (v) => update((st) => { st.skins.sessionThemes = v; }) })),
       section('Rotation',
         toggle({ label: 'Rotate through selected skins', checked: cfg.playlist.enabled, onChange: (v) => { update((st) => { st.skins.playlist.enabled = v; }); render(); } }),
         cfg.playlist.enabled ? [
@@ -489,7 +489,7 @@ export function skinsTab(app) {
     const meter = (label, value, color) => row(label, el('div', { class: 'meter grow' }, el('i', { style: { width: `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`, background: color || '' } })));
     setChildren(signalsEl,
       meter('Intensity', sig.intensity), meter('Candle range', sig.range), meter('Velocity', sig.velocity),
-      meter('vs daily open', (sig.dist + 1) / 2, sig.dist >= 0 ? 'linear-gradient(90deg,#1fbf8f,#4fe0b2)' : 'linear-gradient(90deg,#ff5468,#ff8594)'), meter('Calm', sig.calm, 'linear-gradient(90deg,#ffb020,#ffd27a)'));
+      meter('vs daily open', (sig.dist + 1) / 2, sig.dist >= 0 ? '#089981' : '#f23645'), meter('Calm', sig.calm, '#ff9800'));
   }
 
   const unsubs = [bus.on('skins:import', (text) => { setView('library'); importSkin(text); }), bus.on('skins:status', paintStatus), bus.on('skins:signals', paintSignals)];

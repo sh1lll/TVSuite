@@ -26,21 +26,21 @@ export function indicatorView(app) {
     try {
       const r = transpile(src.value, { lang, name: name.value || 'My indicator' });
       out.value = r.pine;
-      setStatus(`Translated from ${r.lang === 'js' ? 'JavaScript' : r.lang === 'python' ? 'Python' : 'Java'} — copy it into TradingView’s Pine Editor and press “Add to chart”.`, 'ok');
+      setStatus(`Translated from ${r.lang === 'js' ? 'JavaScript' : r.lang === 'python' ? 'Python' : 'Java'}, copy it into TradingView’s Pine Editor and press “Add to chart”.`, 'ok');
       return true;
-    } catch (err) { out.value = ''; setStatus(`${err.message}${app.ai ? ' — or use “Translate with AI”.' : ''}`, 'err'); return false; }
+    } catch (err) { out.value = ''; setStatus(`${err.message}${app.ai ? ', or use “Translate with AI”.' : ''}`, 'err'); return false; }
   }
   async function viaAi() {
     if (!app.ai?.pine) { toast(root, 'AI translation needs the browser extension and a model in Options', 'warn', 4000); return; }
     setStatus('Translating with your AI model…');
-    try { const r = await app.ai.pine(src.value, lang); out.value = r.pine; setStatus(r.notes || 'Translated by your AI model — review before use.', 'ai'); }
+    try { const r = await app.ai.pine(src.value, lang); out.value = r.pine; setStatus(r.notes || 'Translated by your AI model, review before use.', 'ai'); }
     catch (err) { setStatus(err.message, 'err'); }
   }
   async function send(addToChart) {
     if (!out.value && !translate()) return;
     const res = await sendToPineEditor(out.value, { queryMain: app.queryMain, addToChart });
     if (res.ok) {
-      toast(root, res.added ? 'Sent to the Pine Editor and added to the chart' : res.addMissing ? 'Sent — couldn’t find “Add to chart”, press it in the Pine Editor' : 'Sent to the Pine Editor — press “Add to chart” when ready', 'ok', 4000);
+      toast(root, res.added ? 'Sent to the Pine Editor and added to the chart' : res.addMissing ? 'Sent, couldn’t find “Add to chart”, press it in the Pine Editor' : 'Sent to the Pine Editor, press “Add to chart” when ready', 'ok', 4000);
       setStatus(`In the Pine Editor (${res.method === 'api' ? 'editor API' : res.method === 'pasted' ? 'pasted' : 'typed'}${res.added ? ', added to chart' : ''}).`, 'ok');
       return;
     }
@@ -79,7 +79,7 @@ export function indicatorView(app) {
       status,
       out,
       el('div', { class: 'btns', style: { flexWrap: 'wrap' } },
-        button('Copy Pine', async () => { if (!out.value) return; await copyText(out.value); toast(root, 'Pine copied — paste it into the Pine Editor'); }, 'primary', { icon: 'copy', dataset: { copyPine: '1' } }),
+        button('Copy Pine', async () => { if (!out.value) return; await copyText(out.value); toast(root, 'Pine copied, paste it into the Pine Editor'); }, 'primary', { icon: 'copy', dataset: { copyPine: '1' } }),
         button('Send to Pine Editor', () => send(false), '', { icon: 'code', dataset: { sendPine: '1' } }),
         button('Send & add to chart', () => send(true), '', { dataset: { sendPineAdd: '1' } })),
       el('div', { class: 'note' }, 'Send opens TradingView’s Pine Editor if needed, replaces its script and checks it went in. If it can’t confirm, the script goes to your clipboard with steps.'),

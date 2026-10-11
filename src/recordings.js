@@ -20,7 +20,7 @@ async function render() {
       $('status').textContent = `Sending to ${target}…`;
       const r = await chrome.runtime.sendMessage({ type: 'share.send', payload: { kind: 'recordings', targets: [target], recordingId: meta.id, title: meta.name, text: `${meta.symbol || 'Chart'} · ${dur(meta.duration)}` } });
       const res = r?.results?.[target];
-      $('status').textContent = res?.ok ? `Sent to ${target}${res.skipped ? ` (file too large — sent the text only)` : ''}.` : `Couldn’t send: ${res?.error || r?.error || 'unknown error'}`;
+      $('status').textContent = res?.ok ? `Sent to ${target}${res.skipped ? ` (file too large, sent the text only)` : ''}.` : `Couldn’t send: ${res?.error || r?.error || 'unknown error'}`;
     };
     const card = h('div', { class: 'clip', 'data-id': meta.id },
       video,

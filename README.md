@@ -125,7 +125,7 @@ You can change them in the About tab.
 
 Every tab is also available on a full settings page (the All settings button in the toolbar popup), so you can change skins, sound, risk rules and capture options without a chart open. Things that need a live chart, like previews and P&L meters, only show up in the panel over the chart.
 
-If you'd rather not see the TVS button at all, untick Show the TVS button in the popup or in About → Launcher. The hotkey and the popup's Open panel button still work.
+You can drag the TVS button anywhere on screen and it stays there. If you'd rather not see it at all, untick Show the TVS button in the popup or in About → Launcher. The hotkey and the popup's Open panel button still work.
 
 The options page holds the AI provider and key (Anthropic, or any OpenAI-compatible endpoint including a local Ollama), Discord and Telegram, light devices, desktop notifications, extra sites and data export.
 
@@ -166,7 +166,7 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 The roadmap is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Research notes: [TradingView gaps](docs/research/tradingview-gaps.md), [ChartSkins teardown](docs/research/chartskins.md), [template-manager analysis](docs/research/template-manager.md), [platform bridge](docs/research/platform-bridge.md), [integration facts](docs/research/integrations.md) and [ideas](docs/IDEAS.md).
 
-There are 107 unit tests and 68 end-to-end checks. The end-to-end checks run the real extension in Chromium against the mock page, covering every feature above, the desktop bundle, and the launcher over CDP.
+There are 107 unit tests and 69 end-to-end checks. The end-to-end checks run the real extension in Chromium against the mock page, covering every feature above, the desktop bundle, and the launcher over CDP.
 
 Some things can only be checked on live TradingView or real hardware:
 

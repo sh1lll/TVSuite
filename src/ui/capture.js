@@ -45,7 +45,7 @@ export function setupCapture(app) {
   async function quickCard() {
     try {
       const c = makeCard();
-      try { await copyCanvas(c); toast(root, 'Screenshot card copied — paste it anywhere'); }
+      try { await copyCanvas(c); toast(root, 'Screenshot card copied, paste it anywhere'); }
       catch (_) { const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = `tvsuite-${Date.now()}.png`; a.click(); toast(root, 'Screenshot card downloaded'); }
       bus.emit('capture:card', c);
       autoShare('cards', { title: cardInfo().title, image: c.toDataURL('image/png'), filename: 'chart.png' });
@@ -55,7 +55,7 @@ export function setupCapture(app) {
   function toggleRecording() {
     try {
       const on = app.recorder.toggle();
-      toast(root, on ? 'Recording the chart — Alt+Shift+R to stop' : 'Recording stopped — saving…');
+      toast(root, on ? 'Recording the chart, Alt+Shift+R to stop' : 'Recording stopped, saving…');
     } catch (err) { toast(root, err.message, 'err', 4000); }
   }
 

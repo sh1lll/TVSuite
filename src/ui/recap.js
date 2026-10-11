@@ -38,7 +38,7 @@ export function createRecap(app) {
     const send = (t) => async () => { try { const res = await share(r, [t]); const x = res?.results?.[t]; toast(root, x?.ok ? `Recap sent to ${t}` : `${t}: ${x?.error || 'not set up'}`, x?.ok ? 'ok' : 'err', 4000); } catch (err) { toast(root, err.message, 'err'); } };
     const body = [img, el('div', { class: 'note', dataset: { recapText: '1' } }, r.text),
       el('div', { class: 'btns', style: { flexWrap: 'wrap' } },
-        button('Copy image', async () => { try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': await canvasToBlob(r.canvas) })]); toast(root, 'Recap copied'); } catch (_) { toast(root, 'Copy failed — use Download', 'warn'); } }, 'primary sm', { icon: 'copy' }),
+        button('Copy image', async () => { try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': await canvasToBlob(r.canvas) })]); toast(root, 'Recap copied'); } catch (_) { toast(root, 'Copy failed, use Download', 'warn'); } }, 'primary sm', { icon: 'copy' }),
         button('Copy text', async () => { await copyText(r.text); toast(root, 'Summary copied'); }, 'sm'),
         button('Download', () => { const a = el('a', { href: r.canvas.toDataURL('image/png'), download: `tvsuite-recap-${r.stats.day}${r.stats.session ? `-${r.stats.session.id}` : ''}.png` }); document.body.append(a); a.click(); a.remove(); }, 'sm', { icon: 'download' }),
         app.share ? button('Discord', send('discord'), 'sm') : null, app.share ? button('Telegram', send('telegram'), 'sm') : null)];
@@ -64,7 +64,7 @@ export function createRecap(app) {
     if (!(await claim(key))) return;
     const r = await make(opts);
     if (!r) return;
-    const msg = el('span', {}, `${opts.session ? opts.session.name : 'Day'} recap ready — `, el('a', { href: '#', onclick: (e) => { e.preventDefault(); show(r); } }, 'view'));
+    const msg = el('span', {}, `${opts.session ? opts.session.name : 'Day'} recap ready, `, el('a', { href: '#', onclick: (e) => { e.preventDefault(); show(r); } }, 'view'));
     toast(root, msg, 'ok', 8000);
     bus.emit('sound:manual', { type: 'sessionClose', vars: { session: opts.session?.name || 'Trading day' } });
     const sh = getSettings().share;

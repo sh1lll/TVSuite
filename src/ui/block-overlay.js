@@ -36,7 +36,7 @@ export function createBlockOverlay(app) {
     actions = el('div');
     setChildren(card,
       el('div', { style: { fontSize: '40px', marginBottom: '4px' } }, isTarget ? '🎯' : '🔒'),
-      el('h3', { style: { fontSize: '18px', margin: '0 0 6px' } }, isTarget ? 'Target reached — done for today' : 'Trading blocked for today'),
+      el('h3', { style: { fontSize: '18px', margin: '0 0 6px' } }, isTarget ? 'Target reached, done for today' : 'Trading blocked for today'),
       reasonsEl, clock, untilEl,
       el('div', { class: 'note', style: { marginTop: '10px' } }, 'TVSuite can’t see or close positions. For real liquidation, set your broker’s own daily loss action (e.g. “Liquidate and Block”).'),
       actions);

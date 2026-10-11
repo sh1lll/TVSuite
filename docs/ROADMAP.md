@@ -122,6 +122,8 @@ _Last updated: 2026-10-11._
 - ✅ The popup has a Check this page button that prints which frames TVSuite can see, whether a chart was found in each, and whether TVSuite is running, to paste into a bug report.
 - 🟡 TopstepX and TradeSea on the live sites: still not checked (needs a login). If the chart sits in an iframe on a different domain, Turn on here asks for hosts that look chart-related; anything else is added under Accounts, sites & data.
 - 🟡 The key guard assumes the page's shortcut handlers don't register before the content script at document start. Confirmed against the mock page only.
+- ✅ The TVS button is draggable anywhere on screen and remembers where you put it (a click still opens the panel). Covered by an e2e check.
+- ✅ Visual restyle: the panel, settings page, popup and options page now use flat TradingView-style surfaces (solid #1e222d panels, 1px borders, 4px radii, TradingView blue only for the active tab, toggles and primary buttons). Removed the purple-blue gradient, glass blur, glows, uppercase micro-labels and nested cards; the tab bar is text with an underline; the brand mark and toolbar icon are flat. Em dashes in UI copy were replaced with plainer punctuation.
 - ❓ "Some parts at the bottom are themed but the lines aren't": the report was unclear. Needs a screenshot or a description of which strip and which lines (grid, axis borders, the time scale, the pane separator) look wrong. Not changed yet ⏳
 
 ## Phase 5 — Desktop ✅ (🟡 on real installs)
@@ -132,7 +134,7 @@ _Last updated: 2026-10-11._
 
 ## Verification
 - `npm test`: 107 unit tests
-- `npm run e2e`: 68 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
+- `npm run e2e`: 69 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
 - Known flake: before the multi-tab fix, the co-watch check failed in 2 of 3 full runs (two panels re-saving settings). After the fix, the two-tab check failed once with no captured cause, then passed 2 of 2 full runs. It now reports what blocked the click if it happens again ⏳
 - `node test/e2e/perf.mjs`: per-skin cost table
 

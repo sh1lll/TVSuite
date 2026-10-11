@@ -49,7 +49,7 @@ export function bridgeTab(app) {
     });
     const links = openLinks(c).map((l) => button(l.label, () => (l.id === 'tradingview' ? openOnTradingView(formatSymbol(c, 'tradingview')) : window.open(l.url, '_blank', 'noopener')), 'sm', { dataset: { open: l.id } }));
     setChildren(table,
-      el('div', { class: 'note', style: { margin: '6px 0' }, dataset: { bridgeLabel: '1' } }, c ? t.label : query ? 'Not recognized — try EXCHANGE:SYMBOL, a futures contract like ESZ26, or a pair like BTC-USD' : 'Type a symbol'),
+      el('div', { class: 'note', style: { margin: '6px 0' }, dataset: { bridgeLabel: '1' } }, c ? t.label : query ? 'Not recognized, try EXCHANGE:SYMBOL, a futures contract like ESZ26, or a pair like BTC-USD' : 'Type a symbol'),
       c ? el('div', { class: 'list' }, rows) : null,
       links.length ? el('div', { class: 'btns', style: { marginTop: '8px', flexWrap: 'wrap' } }, el('span', { class: 'note', style: { margin: '0 4px 0 0', alignSelf: 'center' } }, 'Open in'), links) : null);
   }
@@ -78,7 +78,7 @@ export function bridgeTab(app) {
   }
 
   // --- Watchlist converter ---------------------------------------------------------------------
-  const src = stop(el('textarea', { rows: 4, placeholder: 'Paste a watchlist — TradingView export (###sections), CSV from Finviz/Yahoo/your broker, or one symbol per line', dataset: { wlIn: '1' } }));
+  const src = stop(el('textarea', { rows: 4, placeholder: 'Paste a watchlist, TradingView export (###sections), CSV from Finviz/Yahoo/your broker, or one symbol per line', dataset: { wlIn: '1' } }));
   const out = stop(el('textarea', { rows: 4, readonly: true, dataset: { wlOut: '1' } }));
   const report = el('div', { class: 'note' });
   const fmtSel = el('select', { class: 'grow' }, WATCHLIST_FORMATS.map((f) => el('option', { value: f.id }, f.name)));
@@ -113,7 +113,7 @@ export function bridgeTab(app) {
   let codeView = null;
   function render() {
     pxIn.value = pxText();
-    const hero = el('div', { class: 'hero', style: { padding: '14px', background: 'linear-gradient(135deg, rgba(54,197,240,.16), rgba(91,140,255,.12))' } },
+    const hero = el('div', { class: 'hero', style: { padding: '14px', background: 'var(--raise)' } },
       el('div', { class: 'row', style: { margin: 0 } }, icon('bridge'),
         el('div', { class: 'grow' }, el('div', { style: { fontWeight: 700, fontSize: '14px' } }, 'Platform Bridge'),
           el('div', { class: 'note', style: { margin: 0 } }, 'TradingView ⇄ NinjaTrader, Tradovate, TopstepX, thinkorswim, Sierra, IBKR, MT, Yahoo, crypto exchanges'))));
@@ -124,7 +124,7 @@ export function bridgeTab(app) {
         linked),
       section('Platform details',
         row('ProjectX roots', pxIn),
-        el('div', { class: 'note' }, 'ProjectX/TopstepX contract ids are confirmed for NQ (ENQ) and MNQ. ES (EP) and MES follow the same scheme but are unconfirmed, and other roots default to the CME root — check the id your platform shows and add it here.'),
+        el('div', { class: 'note' }, 'ProjectX/TopstepX contract ids are confirmed for NQ (ENQ) and MNQ. ES (EP) and MES follow the same scheme but are unconfirmed, and other roots default to the CME root, check the id your platform shows and add it here.'),
         el('div', { class: 'note' }, IS_EXTENSION ? 'Anywhere on the web: select a ticker, right-click → “Open in TradingView”.' : ''))];
     else if (view === 'watchlists') content = [section('Watchlist converter',
         src,
