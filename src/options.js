@@ -65,6 +65,47 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     status('siteStatus', `Added ${host}. Reload that site's tab.`, 'ok');
     renderSites();
 
+  // Discord / Telegram (secrets live under their own key; only this page and the background read it).
+  const SECRETS = 'share:secrets';
+  const secrets = async () => (await chrome.storage.local.get(SECRETS))[SECRETS] || {};
+  const putSecrets = async (patch) => chrome.storage.local.set({ [SECRETS]: { ...(await secrets()), ...patch } });
+  (async () => { const sc = await secrets(); $('discordWebhook').value = sc.discord?.webhook || ''; $('tgToken').value = sc.telegram?.token || ''; $('tgChat').value = sc.telegram?.chatId || ''; })();
+  const grant = (origins) => chrome.permissions.request({ origins });
+  $('saveDiscord').onclick = async () => {
+    const url = $('discordWebhook').value.trim();
+    if (url && !/^https:\/\/(?:canary\.|ptb\.)?(?:discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) return status('shareStatus', 'That doesn’t look like a Discord webhook URL', 'err');
+    if (url && !(await grant(['https://discord.com/*', 'https://discordapp.com/*']))) return status('shareStatus', 'Permission not granted', 'err');
+    await putSecrets({ discord: { webhook: url } });
+    const st = await loadSettings(); st.share.discord.enabled = !!url; await saveSettings(st);
+    status('shareStatus', url ? 'Discord saved.' : 'Discord removed.', 'ok');
+  };
+  $('saveTelegram').onclick = async () => {
+    const token = $('tgToken').value.trim(), chatId = $('tgChat').value.trim();
+    if (token && !(await grant(['https://api.telegram.org/*']))) return status('shareStatus', 'Permission not granted', 'err');
+    await putSecrets({ telegram: { token, chatId } });
+    const st = await loadSettings(); st.share.telegram.enabled = !!(token && chatId); await saveSettings(st);
+    status('shareStatus', token ? 'Telegram saved.' : 'Telegram removed.', 'ok');
+  };
+  $('findChat').onclick = async () => {
+    const token = $('tgToken').value.trim();
+    if (!/^\d+:[\w-]+$/.test(token)) return status('shareStatus', 'Enter the bot token first', 'err');
+    if (!(await grant(['https://api.telegram.org/*']))) return status('shareStatus', 'Permission not granted', 'err');
+    try {
+      const r = await (await fetch(`https://api.telegram.org/bot${token}/getUpdates`)).json();
+      const chats = [...new Map((r.result || []).map((u) => u.message?.chat || u.channel_post?.chat).filter(Boolean).map((c) => [c.id, c])).values()];
+      if (!chats.length) return status('shareStatus', 'No messages yet — send your bot a message, then try again.', 'err');
+      $('tgChat').value = String(chats[chats.length - 1].id);
+      status('shareStatus', `Found: ${chats.map((c) => `${c.title || c.username || c.first_name} (${c.id})`).join(', ')}. Press Save.`, 'ok');
+    } catch (err) { status('shareStatus', `Telegram: ${err.message}`, 'err'); }
+  };
+  const test = (target) => async () => {
+    const r = await chrome.runtime.sendMessage({ type: 'share.send', payload: { kind: 'test', targets: [target], title: 'TVSuite test', text: 'If you can read this, TVSuite can post here.' } });
+    const res = r?.results?.[target];
+    status('shareStatus', res?.ok ? `Test sent to ${target}.` : `${target}: ${res?.error || r?.error}`, res?.ok ? 'ok' : 'err');
+  };
+  $('testDiscord').onclick = test('discord');
+  $('testTelegram').onclick = test('telegram');
+
   // Desktop notifications: optional permission, requested only when switched on.
   const notifyState = async () => {
     const s = await loadSettings();
@@ -123,7 +164,7 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     renderMedia();
   };
   renderMedia();
-  if (['#media', '#notify'].includes(location.hash)) document.getElementById(location.hash.slice(1)).scrollIntoView();
+  if (['#media', '#notify', '#share', '#lights', '#voice'].includes(location.hash)) document.getElementById(location.hash.slice(1)).scrollIntoView();
 
   $('exportAll').onclick = async () => {
     const all = await chrome.storage.local.get(null);

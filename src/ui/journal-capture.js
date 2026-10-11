@@ -39,6 +39,7 @@ export function setupJournalCapture(app) {
       try {
         await app.journal.add(entryRec);
         if (pnl.value !== '' && app.risk) await app.risk.addTrade({ pnl: +pnl.value, contracts: contracts.value === '' ? null : +contracts.value, symbol: entryRec.symbol, journalId: entryRec.id });
+        bus.emit('journal:saved', { ...entryRec, tags: entryRec.tags });
         close(); toast(root, pnl.value !== '' ? 'Saved to journal and Risk Guard' : 'Saved to journal');
       }
       catch (err) { toast(root, `Journal save failed: ${err.message}`, 'err', 4000); }

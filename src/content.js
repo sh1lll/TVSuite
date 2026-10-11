@@ -24,6 +24,16 @@ const journal = {
 
 const notify = (n) => { try { chrome.runtime.sendMessage({ type: 'notify', ...n }).catch(() => {}); } catch (_) { /* extension reloaded */ } };
 
+// Discord/Telegram and the recordings library live in the background worker.
+const share = (payload) => new Promise((resolve, reject) => chrome.runtime.sendMessage({ type: 'share.send', payload }, (res) => {
+  if (chrome.runtime.lastError || !res || res.error) return reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Sharing unavailable'));
+  resolve(res);
+}));
+const recordings = {
+  list: () => new Promise((resolve) => chrome.runtime.sendMessage({ type: 'recordings.list' }, (res) => resolve(res?.list || []))),
+  open: (id) => chrome.runtime.sendMessage({ type: 'recordings.open', id }),
+};
+
 const ai = {
   generate: (prompt) => new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({ type: 'ai.generate', prompt }, (res) => {
@@ -40,5 +50,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
-const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal, notify }).catch((err) => console.error('[TVSuite] failed to start', err));
+const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal, notify, share, recordings }).catch((err) => console.error('[TVSuite] failed to start', err));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();

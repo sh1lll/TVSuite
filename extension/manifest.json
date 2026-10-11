@@ -37,7 +37,12 @@
   "optional_host_permissions": [
     "https://*/*",
     "http://localhost/*",
-    "http://127.0.0.1/*"
+    "http://127.0.0.1/*",
+    "https://discord.com/*",
+    "https://discordapp.com/*",
+    "https://api.telegram.org/*",
+    "https://openapi.api.govee.com/*",
+    "http://*/*"
   ],
   "content_scripts": [
     {
@@ -81,7 +86,9 @@
         "upload.html",
         "upload.js",
         "sound.html",
-        "sound.js"
+        "sound.js",
+        "vault.html",
+        "vault.js"
       ],
       "matches": [
         "https://*/*",

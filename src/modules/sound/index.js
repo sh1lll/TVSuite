@@ -161,18 +161,20 @@ export function createSoundModule(ctx) {
     if (recentToasts.has(text)) return;
     recentToasts.set(text, now);
     const type = classifyToast(text, cfg().detect);
-    if (type) fire(type, {});
+    if (type) bus.emit('trade:event', { type, source: 'toast', text });
   }
   function startObserver() {
     if (observer) return;
     observer = new MutationObserver((records) => {
       const c = cfg();
-      if (!c.enabled || !(c.events.tradeEntry.on || c.events.tradeExit.on || c.events.tvAlert.on)) return;
+      // Detection runs whenever anything listens (sound, recorder, lights, risk); it only reads text.
+      if (!ctx.wantsTradeEvents?.() && !(c.enabled && (c.events.tradeEntry.on || c.events.tradeExit.on || c.events.tvAlert.on))) return;
       for (const r of records) for (const n of r.addedNodes) scanNode(n.nodeType === 3 ? n.parentElement : n);
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: false });
   }
 
+  bus.on('trade:event', (e) => fire(e.type, e.vars || {}, { force: e.source === 'hotkey' }));
   bus.on('journal:capture', () => fire('journal'));
   bus.on('skins:signals', (sig) => { if (sig.calm > 0.5 && lastCalm <= 0.5) fire('calm'); lastCalm = sig.calm; });
   bus.on('sound:manual', (x) => (typeof x === 'string' ? fire(x, {}, { force: true }) : fire(x.type, x.vars || {}, { force: !!x.force })));

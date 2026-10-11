@@ -6,6 +6,7 @@ import path from 'node:path';
 import { chromium } from 'playwright-core';
 import { launchWithExtension, routeTradingView, makeBackend, panel, ROOT, CHROME } from './harness.mjs';
 import { encodeSkin } from '../../src/modules/skins/packs.js';
+import { startMockServices } from './mock-services.mjs';
 
 const OUT = path.join(ROOT, 'test/e2e/out');
 mkdirSync(OUT, { recursive: true });
@@ -747,6 +748,65 @@ await check('chart time counts active time on the chart', async () => {
   await waitFor(async () => +(await p.locator('[data-chart-time]').getAttribute('data-chart-time')) >= 5, { message: 'chart time > 0', timeout: 12000 });
 });
 
+console.log('\nCapture & share');
+const mock = await startMockServices();
+const capTab = async (v) => { const p = await openPanel(page, 'capture'); if (v) await p.locator(`.subnav button[data-value="${v}"]`).first().click(); return p; };
+const swk = () => context.serviceWorkers()[0];
+await swk().evaluate((base) => chrome.storage.local.set({ 'share:secrets': {
+  discord: { webhook: `${base}/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz0123` },
+  telegram: { token: '123456789:AAEhBP0av28aZ7z-kVxIl1g3bW6jK9yDmQs', chatId: '4242', base },
+} }), mock.base);
+await check('screenshot card: 16:9 framed chart preview, sent to Discord as an attached PNG', async () => {
+  const p = await capTab('card');
+  const prev = p.locator('[data-card-preview]');
+  await waitFor(async () => (await prev.getAttribute('data-w')) === '1600', { message: 'card rendered' });
+  assert.equal(await prev.getAttribute('data-h'), '900');
+  await p.locator('[data-theme="sunset"]').click();
+  await p.locator('button[data-send="discord"]').click();
+  const req = await waitFor(() => mock.requests.find((r) => r.url.startsWith('/api/webhooks/')), { message: 'discord request' });
+  assert.match(req.headers['content-type'], /multipart\/form-data/);
+  assert.match(req.text, /name="payload_json"/);
+  assert.match(req.text, /name="files\[0\]"; filename="chart.png"\r\nContent-Type: image\/png/);
+  assert.ok(req.size > 20000, `image attached (${req.size} bytes)`);
+});
+await check('recorder: a trade entry starts recording, the exit stops it, the clip is saved and sent to Telegram', async () => {
+  // Turn on auto-recording with no post-roll, and auto-send recordings to Telegram.
+  let p = await capTab('recorder');
+  await p.locator('label.switch', { hasText: 'Record my trades' }).click();
+  await p.locator('.row', { hasText: 'Keep recording' }).locator('input[type=range]').fill('0');
+  p = await capTab('share');
+  await p.locator('label.switch', { hasText: 'Send to Telegram' }).click();
+  await p.locator('.sec', { hasText: 'Telegram' }).locator('label.switch', { hasText: 'Trade recordings' }).click();
+  await page.locator('#tvsuite-panel-host .x').click();
+  mock.requests.length = 0;
+  await page.evaluate(() => window.mockTV.toast('Order filled: Buy 1 BTCUSD at 63,512.00'));
+  p = await capTab('recorder');
+  await waitFor(async () => (await p.locator('[data-rec-state]').getAttribute('data-rec-state')) === 'on', { message: 'recording started' });
+  await sleep(3000);
+  await page.evaluate(() => window.mockTV.toast('Position closed: BTCUSD +120.00 USD'));
+  const clip = await waitFor(() => swk().evaluate(() => new Promise((res) => {
+    const r = indexedDB.open('tvsuite-recordings', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('clips', { keyPath: 'id' });
+    r.onsuccess = () => { const db = r.result; const g = db.transaction('clips').objectStore('clips').getAll(); g.onsuccess = () => { db.close(); const c = g.result[0]; res(c ? { size: c.size, mime: c.mime, duration: c.duration, events: c.events.map((e) => e.type), name: c.name } : null); }; };
+  })), { message: 'clip saved', timeout: 15000 });
+  assert.ok(clip.size > 10000, `clip size ${clip.size}`);
+  assert.match(clip.mime, /^video\/(mp4|webm)/);
+  assert.ok(clip.duration >= 2.5, `duration ${clip.duration}`);
+  assert.deepEqual(clip.events.slice(0, 2), ['tradeEntry', 'tradeExit']);
+  const tg = await waitFor(() => mock.requests.find((r) => /\/send(Video|Document)$/.test(r.url)), { message: 'telegram upload', timeout: 15000 });
+  assert.match(tg.text, /name="chat_id"\r\n\r\n4242/);
+  assert.match(tg.text, /Content-Type: video\//);
+  // The recordings page plays it back.
+  const rp = await context.newPage();
+  await rp.goto(`chrome-extension://${extensionId}/recordings.html`);
+  const d = await waitFor(() => rp.evaluate(() => { const v = document.querySelector('.clip video'); return v && v.readyState >= 1 ? v.duration : 0; }), { message: 'video metadata' });
+  assert.ok(d > 1 || d === Infinity, `playable duration ${d}`);
+  await rp.close();
+  await page.bringToFront();
+  p = await capTab('recorder');
+  await p.locator('label.switch', { hasText: 'Record my trades' }).click();
+});
+
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));
   assert.deepEqual(relevant, []);
@@ -804,6 +864,7 @@ await check('desktop launcher attaches over CDP, injects, and survives a reload'
   } finally { proc.kill(); await browser.close(); }
 });
 
+await mock.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} e2e checks passed`);
 writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results.map(({ name, ok, ms, err }) => ({ name, ok, ms, err: err ? String(err.message || err) : undefined })), null, 2));

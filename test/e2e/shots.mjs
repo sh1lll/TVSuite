@@ -52,6 +52,11 @@ for (const v of ['-180', '420', '-260']) { await p.locator('input[data-pnl-input
 await snap('tab-risk-today');
 await p.locator('.subnav button[data-value="time"]').first().click();
 await snap('tab-risk-time');
+await p.locator('.tab[data-tab="capture"]').click();
+await page.waitForTimeout(1200);
+await snap('tab-capture-card');
+await p.locator('.subnav button[data-value="recorder"]').first().click();
+await snap('tab-capture-recorder');
 await p.locator('.tab[data-tab="bridge"]').click();
 await p.locator('input[data-bridge-input]').fill('ES 12-26');
 await snap('tab-bridge');

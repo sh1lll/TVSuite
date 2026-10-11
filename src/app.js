@@ -14,6 +14,8 @@ import { createSymbolLink } from './modules/bridge/link.js';
 import { createRiskGuard } from './modules/risk/index.js';
 import { createChartTime } from './modules/risk/chart-time.js';
 import { createBlockOverlay } from './ui/block-overlay.js';
+import { createRecorder } from './modules/capture/recorder.js';
+import { setupCapture } from './ui/capture.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -39,7 +41,7 @@ function queryMain(q) {
   });
 }
 
-export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, notify = null, forceInline = false } = {}) {
+export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, notify = null, share = null, recordings = null, forceInline = false } = {}) {
   if (window.__TVSUITE__) return window.__TVSUITE__;
   let settings = await loadSettings();
   const adapter = pickAdapter(settings.sites);
@@ -62,7 +64,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   const persist = debounce(() => saveSettings(settings), 250);
 
   const app = {
-    version: VERSION, host: HOST, adapter, bus, ai, openOptions, fetchGallery, journal, queryMain,
+    version: VERSION, host: HOST, adapter, bus, ai, openOptions, fetchGallery, journal, queryMain, share, recordings,
     getSettings: () => settings,
     update(fn, { silent = false } = {}) {
       fn(settings);
@@ -72,19 +74,23 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     rerender: () => panel?.rerender(),
   };
 
+  // Trade entry/exit detection (pop-up keywords, hotkeys) feeds sound, the recorder and lights.
+  const wantsTradeEvents = () => settings.sound.enabled || settings.capture.recorder.auto || settings.lights.enabled;
   const skins = createSkinsModule({ adapter, getSettings: () => settings, bus, SkinHost, workerSource: WORKER_SOURCE, forceInline });
   app.skins = skins;
-  const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, notify, update: (fn) => app.update(fn) });
+  const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, notify, wantsTradeEvents: () => wantsTradeEvents(), update: (fn) => app.update(fn) });
   app.sound = sound;
   app.focus = createFocus(adapter, bus);
   app.risk = createRiskGuard({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
   app.chartTime = createChartTime({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
+  app.recorder = createRecorder({ adapter, getSettings: () => settings, bus, risk: app.risk, symbol: () => skins.symbol() });
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   await skins.start();
   sound.start();
   const panel = await createPanel(app);
   app.panel = panel;
   createBlockOverlay(app);
+  app.capture = setupCapture(app);
   createHud(app);
   setupJournalCapture(app);
 
@@ -128,8 +134,10 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     else if (matchHotkey(e, settings.tools.focusHotkey)) { e.preventDefault(); e.stopPropagation(); app.focus.toggle(); }
     else if (matchHotkey(e, ui.streamHotkey)) { e.preventDefault(); e.stopPropagation(); toggleStream(); }
     else if (matchHotkey(e, settings.tools.journalHotkey)) { e.preventDefault(); e.stopPropagation(); bus.emit('journal:capture'); }
-    else if (settings.sound.enabled && matchHotkey(e, settings.sound.hotkeys.entry)) { e.preventDefault(); e.stopPropagation(); bus.emit('sound:manual', 'tradeEntry'); }
-    else if (settings.sound.enabled && matchHotkey(e, settings.sound.hotkeys.exit)) { e.preventDefault(); e.stopPropagation(); bus.emit('sound:manual', 'tradeExit'); }
+    else if (matchHotkey(e, settings.capture.recorder.hotkey)) { e.preventDefault(); e.stopPropagation(); app.capture.toggleRecording(); }
+    else if (matchHotkey(e, settings.capture.hotkey)) { e.preventDefault(); e.stopPropagation(); app.capture.quickCard(); }
+    else if (wantsTradeEvents() && matchHotkey(e, settings.sound.hotkeys.entry)) { e.preventDefault(); e.stopPropagation(); bus.emit('trade:event', { type: 'tradeEntry', source: 'hotkey' }); }
+    else if (wantsTradeEvents() && matchHotkey(e, settings.sound.hotkeys.exit)) { e.preventDefault(); e.stopPropagation(); bus.emit('trade:event', { type: 'tradeExit', source: 'hotkey' }); }
     else if (settings.sound.enabled && matchHotkey(e, settings.sound.hotkeys.mute)) { e.preventDefault(); e.stopPropagation(); sound.toggleMute(); }
   }, true);
 

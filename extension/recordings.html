@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TVSuite recordings</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .clip { border: 1px solid var(--border, #2a2e39); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.03); }
+  .clip video { display: block; width: 100%; background: #000; aspect-ratio: 16/9; }
+  .clip .meta { padding: 10px 12px; display: grid; gap: 6px; }
+  .clip .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ev { font-size: 11px; opacity: .7; }
+  .ev button { font-size: 11px; padding: 1px 6px; margin: 2px 3px 0 0; }
+  #empty { opacity: .7; }
+</style>
+</head>
+<body>
+  <h1>Recordings</h1>
+  <p class="note">Recorded by TVSuite from the chart itself — stored only in this browser. Click a marker to jump to that moment.</p>
+  <div id="status" class="note"></div>
+  <div id="list" class="grid"></div>
+  <p id="empty" hidden>No recordings yet. Turn on <b>Capture → Recorder → Record my trades</b>, or press Alt+Shift+R on a chart.</p>
+  <script src="recordings.js"></script>
+</body>
+</html>

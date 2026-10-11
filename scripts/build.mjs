@@ -39,12 +39,12 @@ async function buildAll() {
   const src = await workerSource();
   const common = { bundle: true, target: 'chrome116', legalComments: 'none', plugins: [workerPlugin(src)], define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'warning' };
   await Promise.all([
-    esbuild.build({ ...common, entryPoints: { content: 'src/content.js', 'main-world': 'src/main-world.js', sandbox: 'src/sandbox/sandbox.js', media: 'src/sandbox/media.js', popup: 'src/popup.js', options: 'src/options.js', journal: 'src/journal.js', upload: 'src/upload.js', sound: 'src/sandbox/sound.js' }, outdir: out, format: 'iife' }),
+    esbuild.build({ ...common, entryPoints: { content: 'src/content.js', 'main-world': 'src/main-world.js', sandbox: 'src/sandbox/sandbox.js', media: 'src/sandbox/media.js', popup: 'src/popup.js', options: 'src/options.js', journal: 'src/journal.js', upload: 'src/upload.js', sound: 'src/sandbox/sound.js', vault: 'src/sandbox/vault.js', recordings: 'src/recordings.js' }, outdir: out, format: 'iife' }),
     esbuild.build({ ...common, entryPoints: { background: 'src/background.js' }, outdir: out, format: 'esm', platform: 'browser' }),
     esbuild.build({ ...common, define: { ...common.define, __TVSUITE_DEFAULT_HOST__: '"desktop"' }, entryPoints: ['src/inject.js'], outfile: 'dist/tvsuite-inject.js', format: 'iife' }),
     esbuild.build({ ...common, define: { ...common.define, __TVSUITE_DEFAULT_HOST__: '"userscript"' }, entryPoints: ['src/inject.js'], outfile: 'dist/tvsuite.user.js', format: 'iife', banner: { js: USERSCRIPT_HEADER } }),
   ]);
-  for (const f of ['manifest.json', 'sandbox.html', 'media.html', 'popup.html', 'options.html', 'journal.html', 'upload.html', 'sound.html', 'ui.css']) cpSync(`extension/${f}`, `${out}/${f}`);
+  for (const f of ['manifest.json', 'sandbox.html', 'media.html', 'popup.html', 'options.html', 'journal.html', 'upload.html', 'sound.html', 'vault.html', 'recordings.html', 'ui.css']) cpSync(`extension/${f}`, `${out}/${f}`);
   writeIcons(`${out}/icons`);
   // Gallery: validate every seed skin, write gallery/index.json (served raw from GitHub) and a bundled copy.
   const gallery = GALLERY.map((g) => { const r = validateSkin(g); if (!r.ok) throw new Error(`gallery skin "${g.name}": ${r.errors.join('; ')}`); return r.skin; });

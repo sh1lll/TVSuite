@@ -66,6 +66,32 @@ export const DEFAULT_SETTINGS = {
     breakEveryMin: 0,         // break reminder after this much continuous chart time (0 = off)
     breakLenMin: 5,           // a gap this long counts as a break
   },
+  capture: {
+    hotkey: 'Alt+Shift+S',      // screenshot card → clipboard
+    card: { theme: 'midnight', aspect: '16:9', title: '', watermark: '', show: { price: true, session: true, pnl: true, time: true, brand: true } },
+    recorder: {
+      auto: false,              // start when a trade is entered, stop after you're flat
+      stopOnExit: true,
+      postRollSec: 10,
+      maxMin: 30,
+      useOpenPnl: true,         // when Risk Guard reads open P&L from the screen, ≠ 0 means "in a trade"
+      alsoOn: { tvAlert: false, priceAlert: false },
+      fps: 15,
+      quality: 'medium',        // low | medium | high
+      height: 720,              // 720 | 1080 | 'native'
+      overlays: { symbol: true, timer: true, pnl: true, events: true, watermark: true },
+      watermark: '',
+      mic: false,
+      save: 'library',          // library | download | both
+      keep: 20,
+      hotkey: 'Alt+Shift+R',
+    },
+  },
+  share: {                      // which things go to Discord/Telegram automatically (webhook/token live in options)
+    discord: { enabled: false, cards: true, journal: false, risk: false, recordings: false },
+    telegram: { enabled: false, cards: true, journal: false, risk: false, recordings: false },
+  },
+  lights: { enabled: false },
   bridge: {
     share: true,              // publish this tab's symbol to your other TVSuite tabs (local storage only)
     projectxRoots: {},        // user overrides: { CL: 'CLE' } for ProjectX/TopstepX contract ids

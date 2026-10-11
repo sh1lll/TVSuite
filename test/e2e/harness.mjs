@@ -1,7 +1,7 @@
 // E2E harness: real Chromium + the unpacked extension, with https://www.tradingview.com/ served
 // by request interception (mock chart page + an in-memory fake of the template endpoints).
 import { chromium } from 'playwright-core';
-import { readFileSync, mkdtempSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, existsSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -50,13 +50,25 @@ export async function routeTradingView(context, backend) {
   });
 }
 
-export async function launchWithExtension({ args = [] } = {}) {
+// Test copy of the built extension, additionally granted http://127.0.0.1/* so the background worker can
+// reach local mock servers (Discord/Telegram/lights). The release build never has this permission.
+export function testExtension() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'tvsuite-ext-'));
+  cpSync(EXT, dir, { recursive: true });
+  const mf = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+  mf.host_permissions = [...new Set([...(mf.host_permissions || []), 'http://127.0.0.1/*'])];
+  writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(mf, null, 2));
+  return dir;
+}
+
+export async function launchWithExtension({ args = [], loopback = true } = {}) {
+  const ext = loopback ? testExtension() : EXT;
   const userDataDir = mkdtempSync(path.join(tmpdir(), 'tvsuite-e2e-'));
   const context = await chromium.launchPersistentContext(userDataDir, {
     executablePath: CHROME,
     headless: true,
     viewport: { width: 1400, height: 860 },
-    args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--enable-unsafe-swiftshader', '--use-angle=swiftshader', ...args],
+    args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, '--enable-unsafe-swiftshader', '--use-angle=swiftshader', ...args],
   });
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 10000 });

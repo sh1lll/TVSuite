@@ -32,6 +32,19 @@
     <p class="note" id="mediaStatus"></p>
   </section>
 
+  <section id="share">
+    <h2>Discord &amp; Telegram</h2>
+    <p class="note">Send screenshot cards, journal entries, risk alerts and trade recordings to your own Discord channel or Telegram chat. The webhook and bot token are stored only in this browser and used only by TVSuite's background worker. Choose what gets sent automatically in the panel: Capture → Share.</p>
+    <label class="row">Discord webhook URL <input id="discordWebhook" type="password" autocomplete="off" placeholder="https://discord.com/api/webhooks/…"></label>
+    <div class="btns"><button id="saveDiscord">Save</button><button id="testDiscord">Send a test</button></div>
+    <p class="note">Discord: channel settings → Integrations → Webhooks → New webhook → Copy URL. Files up to 10 MB.</p>
+    <label class="row">Telegram bot token <input id="tgToken" type="password" autocomplete="off" placeholder="123456789:AA…"></label>
+    <label class="row">Chat id <input id="tgChat" type="text" placeholder="e.g. 123456789 or @mychannel"></label>
+    <div class="btns"><button id="saveTelegram">Save</button><button id="findChat">Find my chat id</button><button id="testTelegram">Send a test</button></div>
+    <p class="note">Telegram: create a bot with @BotFather, send it any message, then press “Find my chat id”. Files up to 50 MB.</p>
+    <p class="note" id="shareStatus"></p>
+  </section>
+
   <section id="notify">
     <h2>Desktop notifications</h2>
     <p class="note">Mirror TVSuite sound events (trade entered/closed, alerts, price levels, sessions) as system notifications while the chart tab is in the background. Clicking one brings the chart back.</p>
