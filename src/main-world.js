@@ -86,6 +86,29 @@
           if (cmd.symbol && typeof chart.setSymbol === 'function') chart.setSymbol(String(cmd.symbol).slice(0, 60));
           if (cmd.interval && typeof chart.setResolution === 'function') chart.setResolution(String(cmd.interval).slice(0, 8));
           detail = JSON.stringify({ ok: true });
+        } else if (cmd.cmd === 'keys') {
+          // Key presses for the focused element, created here so page code (Monaco) sees keyCode.
+          const t = document.activeElement || document.body;
+          for (const k of (cmd.keys || []).slice(0, 10)) {
+            for (const type of ['keydown', 'keyup']) {
+              const e = new KeyboardEvent(type, { key: String(k.key), code: String(k.code), ctrlKey: !!k.ctrl, metaKey: !!k.meta, shiftKey: !!k.shift, bubbles: true, cancelable: true, composed: true });
+              Object.defineProperty(e, 'keyCode', { get: () => +k.keyCode || 0 });
+              Object.defineProperty(e, 'which', { get: () => +k.keyCode || 0 });
+              t.dispatchEvent(e);
+            }
+          }
+          detail = JSON.stringify({ ok: true });
+        } else if (cmd.cmd === 'pineSet') {
+          // Only if the page exposes Monaco (TradingView normally doesn't; the content script then drives the editor).
+          const m = window.monaco;
+          const eds = m && m.editor && typeof m.editor.getEditors === 'function' ? m.editor.getEditors() : [];
+          const ed = eds.find((e) => { const n = e.getContainerDomNode && e.getContainerDomNode(); return n && n.closest && n.closest('[data-name*="pine" i], [class*="pine" i], [id*="pine" i]'); }) || eds[0];
+          if (ed && typeof ed.getModel === 'function' && ed.getModel()) {
+            const model = ed.getModel();
+            ed.executeEdits('tvsuite', [{ range: model.getFullModelRange(), text: String(cmd.code || '') }]);
+            ed.setPosition({ lineNumber: 1, column: 1 });
+            detail = JSON.stringify({ ok: true });
+          } else detail = JSON.stringify({ ok: false });
         } else if (cmd.cmd === 'chartInfo' && chart) {
           detail = JSON.stringify({ symbol: typeof chart.symbol === 'function' ? chart.symbol() : null, interval: typeof chart.resolution === 'function' ? chart.resolution() : null });
         } else detail = JSON.stringify({ ok: false });

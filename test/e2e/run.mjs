@@ -665,6 +665,34 @@ await check('indicators: Python/JavaScript/Java examples translate to Pine v6; e
   assert.match(await p.locator('[data-ind-status]').textContent(), /Line 2: Loops aren’t translated/);
   await p.locator('.subnav button[data-value="symbols"]').first().click();
 });
+// The real Monaco editor, served for the Pine Editor stand-in on the mock page.
+const MONACO = path.join(ROOT, 'node_modules/monaco-editor/min');
+await context.route('https://www.tradingview.com/test-monaco/**', (route) => {
+  const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace('/test-monaco/', ''));
+  const file = path.join(MONACO, rel);
+  if (!file.startsWith(MONACO)) return route.fulfill({ status: 403 });
+  try { return route.fulfill({ status: 200, contentType: file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'application/octet-stream', body: readFileSync(file) }); }
+  catch (_) { return route.fulfill({ status: 404 }); }
+});
+for (const editContext of [false, true]) {
+  await check(`indicators: Send to Pine Editor opens it, replaces the script in real Monaco${editContext ? ' (EditContext mode)' : ''} and adds it to the chart`, async () => {
+    await page.reload();
+    await page.waitForFunction(() => !!window.mockTV);
+    await page.evaluate((ec) => { window.mockTV.pine.editContext = ec; }, editContext);
+    const p = await openPanel(page, 'bridge');
+    await p.locator('.subnav button[data-value="code"]').first().click();
+    await p.locator('button[data-example="js"]').click();
+    const pine = await p.locator('textarea[data-ind-out]').inputValue();
+    await p.locator('button[data-send-pine-add]').click();
+    await waitFor(() => page.evaluate(() => window.mockTV.pine.ready === true), { message: 'Pine Editor opened by TVSuite', timeout: 15000 });
+    await waitFor(() => page.evaluate(() => window.mockTV.pine.added), { message: 'Add to chart clicked', timeout: 10000 }).catch(async (e) => { throw new Error(`${e.message}; status: ${await p.locator('[data-ind-status]').textContent()}; editor: ${JSON.stringify((await page.evaluate(() => window.mockTV.pine.value())).slice(0, 160))}; lines: ${await page.evaluate(() => [...document.querySelectorAll('#mock-pine .line-numbers')].map((n) => n.textContent).join(','))}`); });
+    assert.equal(await page.evaluate(() => typeof window.monaco), 'undefined', 'no Monaco global (like TradingView)');
+    const got = (await page.evaluate(() => window.mockTV.pine.value())).trim();
+    if (got !== pine.trim()) { const a = got.split('\n'), b = pine.trim().split('\n'); const i = a.findIndex((l, k) => l !== b[k]); throw new Error(`editor differs at line ${i + 1}: got ${JSON.stringify(a[i])} want ${JSON.stringify(b[i])} (lines ${a.length} vs ${b.length})`); }
+    assert.equal((await page.evaluate(() => window.mockTV.pine.added)).trim(), pine.trim());
+    assert.match(await p.locator('[data-ind-status]').textContent(), /In the Pine Editor \((pasted|typed), added to chart\)/);
+  });
+}
 await check('linked tabs: a symbol seen on another platform tab opens on this chart', async () => {
   const [sw] = context.serviceWorkers();
   await sw.evaluate(() => chrome.storage.local.set({ 'bridge:seen': { 'topstepx.com': { symbol: 'CON.F.US.ENQ.Z26', at: Date.now(), url: 'https://topstepx.com/trade' } } }));

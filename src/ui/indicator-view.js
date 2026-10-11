@@ -1,24 +1,13 @@
 // Indicators view (Bridge tab): write an indicator in Python, JavaScript or Java → Pine Script v6 for
 // TradingView. Built-in translator for the common subset; the configured AI model for anything else.
 import { el, setChildren } from '../core/dom.js';
-import { section, row, segmented, button, toast, copyText, chip } from './kit.js';
+import { section, row, segmented, button, toast, copyText, chip, modal } from './kit.js';
 import { transpile, EXAMPLES } from '../modules/indicators/transpile.js';
 import { storage } from '../core/storage.js';
+import { sendToPineEditor } from '../modules/indicators/pine-editor.js';
 
 const KEY = 'indicators';
 const mono = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: '11.5px', lineHeight: '1.45', whiteSpace: 'pre', tabSize: 4 };
-
-// Experimental: paste into TradingView's open Pine Editor (Monaco) by focusing it and sending select-all + paste.
-export function pasteIntoPineEditor(code) {
-  const ta = [...document.querySelectorAll('.monaco-editor textarea')].find((t) => t.offsetParent !== null || t.getClientRects().length);
-  if (!ta) return false;
-  ta.focus();
-  const key = (type) => { const e = new KeyboardEvent(type, { key: 'a', code: 'KeyA', ctrlKey: !/Mac/.test(navigator.platform), metaKey: /Mac/.test(navigator.platform), bubbles: true, cancelable: true }); Object.defineProperty(e, 'keyCode', { get: () => 65 }); ta.dispatchEvent(e); };
-  key('keydown'); key('keyup');
-  const dt = new DataTransfer(); dt.setData('text/plain', code);
-  ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-  return true;
-}
 
 export function indicatorView(app) {
   const { root } = app;
@@ -47,6 +36,25 @@ export function indicatorView(app) {
     try { const r = await app.ai.pine(src.value, lang); out.value = r.pine; setStatus(r.notes || 'Translated by your AI model — review before use.', 'ai'); }
     catch (err) { setStatus(err.message, 'err'); }
   }
+  async function send(addToChart) {
+    if (!out.value && !translate()) return;
+    const res = await sendToPineEditor(out.value, { queryMain: app.queryMain, addToChart });
+    if (res.ok) {
+      toast(root, res.added ? 'Sent to the Pine Editor and added to the chart' : res.addMissing ? 'Sent — couldn’t find “Add to chart”, press it in the Pine Editor' : 'Sent to the Pine Editor — press “Add to chart” when ready', 'ok', 4000);
+      setStatus(`In the Pine Editor (${res.method === 'api' ? 'editor API' : res.method === 'pasted' ? 'pasted' : 'typed'}${res.added ? ', added to chart' : ''}).`, 'ok');
+      return;
+    }
+    await copyText(out.value).catch(() => {});
+    setStatus(res.message, 'err');
+    modal(root, { title: 'Pine script copied', body: el('div', {},
+      el('p', { class: 'note' }, res.message),
+      el('ol', { class: 'note', style: { paddingLeft: '18px' } },
+        el('li', {}, 'Open the Pine Editor (bottom panel of the chart).'),
+        el('li', {}, 'Click inside it, select all (Ctrl/⌘ + A) and paste (Ctrl/⌘ + V).'),
+        el('li', {}, 'Press “Save”, then “Add to chart”.'))),
+      actions: [{ label: 'OK', value: true, variant: 'primary' }] });
+  }
+
   async function load() { saved = (await storage.get(KEY, [])) || []; render(); }
   async function save() {
     const nm = name.value.trim() || 'My indicator';
@@ -72,8 +80,9 @@ export function indicatorView(app) {
       out,
       el('div', { class: 'btns', style: { flexWrap: 'wrap' } },
         button('Copy Pine', async () => { if (!out.value) return; await copyText(out.value); toast(root, 'Pine copied — paste it into the Pine Editor'); }, 'primary', { icon: 'copy', dataset: { copyPine: '1' } }),
-        button('Paste into Pine Editor', () => { if (!out.value) return; if (pasteIntoPineEditor(out.value)) toast(root, 'Sent to the Pine Editor — check it, then “Add to chart”'); else toast(root, 'Open the Pine Editor first (bottom panel), or use Copy', 'warn', 4000); }, '', { title: 'Experimental' })),
-      el('div', { class: 'note' }, 'In TradingView: open Pine Editor → select all → paste → Add to chart. “Paste into Pine Editor” tries this for you (experimental).'),
+        button('Send to Pine Editor', () => send(false), '', { icon: 'code', dataset: { sendPine: '1' } }),
+        button('Send & add to chart', () => send(true), '', { dataset: { sendPineAdd: '1' } })),
+      el('div', { class: 'note' }, 'Send opens TradingView’s Pine Editor if needed, replaces its script and checks it went in. If it can’t confirm, the script goes to your clipboard with steps.'),
       section(`My indicators · ${saved.length}`,
         el('div', { class: 'row' }, name, button('Save', save, 'sm')),
         saved.length ? el('div', { class: 'list' }, saved.map((it) => el('div', { class: 'row', style: { padding: '0 10px' } },

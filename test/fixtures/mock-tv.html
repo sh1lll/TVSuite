@@ -128,5 +128,35 @@
   <span>Realized P&amp;L <b class="pnlValue-Qq81Lm" data-field="realized">$0.00</b></span>
   <span>Unrealized <b class="pnlValue-Qq81Lm" data-field="open">$0.00</b></span>
 </div>
+<!-- Pine Editor stand-in: the real Monaco editor (served from node_modules by the e2e suite), opened from a
+     bottom-toolbar button, with Monaco's global removed afterwards as on TradingView. -->
+<button id="mock-pine-btn" title="Pine Editor" style="position:fixed;left:60px;bottom:6px;z-index:5;font:12px sans-serif">Pine Editor</button>
+<div id="mock-pine" class="pine-editor-panel" style="display:none;position:fixed;left:60px;bottom:34px;width:640px;height:260px;z-index:6;background:#1e1e1e;border:1px solid #333">
+  <div style="height:28px;display:flex;gap:8px;align-items:center;padding:0 8px;color:#ccc;font:12px sans-serif">Pine Editor <span style="flex:1"></span><button id="mock-pine-add" title="Add to chart">Add to chart</button></div>
+  <div id="mock-pine-host" style="height:232px"></div>
+</div>
+<script>
+  (() => {
+    let editor = null;
+    window.mockTV.pine = { value: () => editor && editor.getValue(), added: null, editContext: false };
+    document.getElementById('mock-pine-add').onclick = () => { window.mockTV.pine.added = editor && editor.getValue(); };
+    document.getElementById('mock-pine-btn').onclick = () => {
+      document.getElementById('mock-pine').style.display = '';
+      if (editor) return;
+      window.MonacoEnvironment = { getWorker: () => new Worker(URL.createObjectURL(new Blob([''], { type: 'text/javascript' }))) };
+      const s = document.createElement('script');
+      s.src = '/test-monaco/vs/loader.js';
+      s.onload = () => {
+        require.config({ paths: { vs: '/test-monaco/vs' } });
+        require(['vs/editor/editor.main'], () => {
+          editor = monaco.editor.create(document.getElementById('mock-pine-host'), { value: '//@version=6\nindicator("Old script")\nplot(open)\n', language: 'plaintext', theme: 'vs-dark', automaticLayout: true, editContext: window.mockTV.pine.editContext, minimap: { enabled: false } });
+          window.mockTV.pine.ready = true;
+          delete window.monaco; // TradingView doesn't expose Monaco as a page global
+        });
+      };
+      document.head.append(s);
+    };
+  })();
+</script>
 </body>
 </html>
