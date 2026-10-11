@@ -16,6 +16,7 @@ import { createChartTime } from './modules/risk/chart-time.js';
 import { createBlockOverlay } from './ui/block-overlay.js';
 import { createRecorder } from './modules/capture/recorder.js';
 import { setupCapture } from './ui/capture.js';
+import { createMini } from './modules/capture/mini.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -84,6 +85,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   app.risk = createRiskGuard({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
   app.chartTime = createChartTime({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
   app.recorder = createRecorder({ adapter, getSettings: () => settings, bus, risk: app.risk, symbol: () => skins.symbol() });
+  app.mini = createMini({ adapter, getSettings: () => settings, bus, risk: app.risk, recorder: app.recorder, sound, symbol: () => skins.symbol() });
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   await skins.start();
   sound.start();
@@ -135,6 +137,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
     else if (matchHotkey(e, ui.streamHotkey)) { e.preventDefault(); e.stopPropagation(); toggleStream(); }
     else if (matchHotkey(e, settings.tools.journalHotkey)) { e.preventDefault(); e.stopPropagation(); bus.emit('journal:capture'); }
     else if (matchHotkey(e, settings.capture.recorder.hotkey)) { e.preventDefault(); e.stopPropagation(); app.capture.toggleRecording(); }
+    else if (matchHotkey(e, settings.capture.miniHotkey)) { e.preventDefault(); e.stopPropagation(); app.mini.openChart().catch((err) => console.warn('[TVSuite]', err.message)); }
     else if (matchHotkey(e, settings.capture.hotkey)) { e.preventDefault(); e.stopPropagation(); app.capture.quickCard(); }
     else if (wantsTradeEvents() && matchHotkey(e, settings.sound.hotkeys.entry)) { e.preventDefault(); e.stopPropagation(); bus.emit('trade:event', { type: 'tradeEntry', source: 'hotkey' }); }
     else if (wantsTradeEvents() && matchHotkey(e, settings.sound.hotkeys.exit)) { e.preventDefault(); e.stopPropagation(); bus.emit('trade:event', { type: 'tradeExit', source: 'hotkey' }); }

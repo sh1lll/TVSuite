@@ -807,6 +807,42 @@ await check('recorder: a trade entry starts recording, the exit stops it, the cl
   await p.locator('label.switch', { hasText: 'Record my trades' }).click();
 });
 
+console.log('\nMini windows');
+async function miniDoc(kind) {
+  // Document Picture-in-Picture window if the browser supports it here, otherwise the pop-up fallback.
+  const viaPip = await page.evaluate((k) => globalThis.documentPictureInPicture?.window?.document.body.dataset.tvsMini === k, kind);
+  if (viaPip) return { pip: true, read: (fn) => page.evaluate(`(${fn})(documentPictureInPicture.window.document)`) };
+  const pop = context.pages().find((pg) => pg !== page && pg.url() === 'about:blank');
+  if (!pop) return null;
+  const k = await pop.evaluate(() => document.body.dataset.tvsMini).catch(() => null);
+  return k === kind ? { pip: false, read: (fn) => pop.evaluate(`(${fn})(document)`) } : null;
+}
+await check('mini chart window mirrors the chart, price and session, and keeps updating', async () => {
+  const p = await capTab('mini');
+  await p.locator('button[data-mini-chart]').click();
+  const w = await waitFor(() => miniDoc('chart'), { message: 'mini chart window' });
+  console.log(`      (opened as ${w.pip ? 'Document Picture-in-Picture' : 'pop-up fallback'})`);
+  const a = await w.read((d) => ({ frames: +d.body.dataset.frames, sym: d.querySelector('.sym').textContent, px: d.querySelector('.px').textContent, foot: d.querySelector('.foot').textContent }));
+  assert.equal(a.sym, 'BTCUSD');
+  assert.match(a.px, /\d/);
+  assert.match(a.foot, /session|opens|closes/i);
+  await sleep(1200);
+  const b = await w.read((d) => ({ frames: +d.body.dataset.frames, ink: (() => { const c = d.querySelector('canvas'); const x = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < x.length; i += 400) if (x[i] + x[i + 1] + x[i + 2] > 60) n++; return n; })() }));
+  assert.ok(b.frames > a.frames + 2, `repainting (${a.frames} → ${b.frames})`);
+  assert.ok(b.ink > 50, 'chart pixels mirrored');
+  await w.read((d) => d.defaultView.close());
+});
+await check('mini player plays an image from my media library in a floating window', async () => {
+  // (Link playback is unit-tested: PiP windows bypass Playwright's request routing, so mocked URLs can't load there.)
+  const p = await capTab('mini');
+  const opts = await p.locator('.sec', { hasText: 'Player' }).locator('select option').allTextContents();
+  assert.ok(opts.length && !/No media yet/.test(opts[0]), `library has media (${opts})`);
+  await p.locator('.sec', { hasText: 'Player' }).getByRole('button', { name: 'Play', exact: true }).click();
+  const w = await waitFor(() => miniDoc('player'), { message: 'player window' });
+  await waitFor(() => w.read((d) => d.body.dataset.state === 'running'), { message: 'library media running in the player frame' });
+  await w.read((d) => d.defaultView.close());
+});
+
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));
   assert.deepEqual(relevant, []);

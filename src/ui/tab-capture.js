@@ -107,7 +107,25 @@ export function captureTab(app) {
   }
 
   // ---------------- Mini window (filled in by the PiP module) ----------------
-  function mini() { return app.mini ? app.mini.panel() : el('div', { class: 'note' }, 'Mini windows load with the extension.'); }
+  function mini() {
+    const st = app.mini.state();
+    const media = (getSettings().skins.library || []).filter((k) => k.kind === 'media');
+    const sel = el('select', { class: 'grow' }, media.length ? media.map((m) => el('option', { value: m.url }, m.name)) : el('option', { value: '' }, 'No media yet — add some in Skins → Studio → Media'));
+    const link = stop(el('input', { type: 'text', placeholder: 'YouTube, Twitch, or a link to an .mp4 / .gif', dataset: { playerLink: '1' } }));
+    const guard = (fn) => () => fn().then(() => setTimeout(render, 300), (err) => toast(root, err.message, 'err', 4500));
+    return [
+      el('div', { class: 'note' }, st.pipSupported ? 'Mini windows float above every other app (Chrome Picture-in-Picture).' : 'This browser has no Picture-in-Picture for pages, so mini windows open as small pop-ups.'),
+      section('Mini chart',
+        el('div', { class: 'note' }, 'Keep an eye on the chart while you work elsewhere: live chart, price, a tick line, session countdown, day P&L vs your limit, record and mute buttons.'),
+        el('div', { class: 'btns' }, button(st.chart ? 'Mini chart is open' : 'Open mini chart', guard(() => app.mini.openChart()), st.chart ? '' : 'primary', { icon: 'pip', dataset: { miniChart: '1' } })),
+        el('div', { class: 'note' }, `Hotkey ${getSettings().capture.miniHotkey}.`)),
+      section('Player',
+        el('div', { class: 'note' }, 'Your own video, a stream or music video in a floating window while you trade.'),
+        row('My media', sel, button('Play', guard(() => (sel.value ? app.mini.openPlayer({ kind: 'library', url: sel.value }) : Promise.reject(new Error('Add a video in Skins → Studio → Media first')))), 'sm')),
+        el('div', { class: 'row' }, el('div', { class: 'grow' }, link), button('Play link', guard(() => app.mini.openPlayer({ kind: 'link', url: link.value })), 'sm primary', { dataset: { playLink: '1' } })),
+        el('div', { class: 'note' }, 'YouTube and Twitch use their official embedded players.')),
+    ];
+  }
 
   // ---------------- Share ----------------
   function share() {
@@ -127,7 +145,7 @@ export function captureTab(app) {
     setChildren(body, view === 'card' ? card() : view === 'recorder' ? recorder() : view === 'mini' ? mini() : share());
     setChildren(wrap, nav, body);
   }
-  const unsubs = [bus.on('recorder:state', () => { if (view === 'recorder' && wrap.isConnected) render(); }), bus.on('recorder:saved', () => { recList = null; if (view === 'recorder' && wrap.isConnected) render(); })];
+  const unsubs = [bus.on('mini:state', () => { if (view === 'mini' && wrap.isConnected) render(); }), bus.on('recorder:state', () => { if (view === 'recorder' && wrap.isConnected) render(); }), bus.on('recorder:saved', () => { recList = null; if (view === 'recorder' && wrap.isConnected) render(); })];
   const tick = setInterval(() => { if (view === 'recorder' && wrap.isConnected && app.recorder.recording()) render(); }, 1000);
   render();
   return { el: wrap, render, dispose: () => { unsubs.forEach((u) => u()); clearInterval(tick); } };

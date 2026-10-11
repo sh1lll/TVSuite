@@ -68,6 +68,7 @@ export const DEFAULT_SETTINGS = {
   },
   capture: {
     hotkey: 'Alt+Shift+S',      // screenshot card → clipboard
+    miniHotkey: 'Alt+Shift+P',  // mini chart window
     card: { theme: 'midnight', aspect: '16:9', title: '', watermark: '', show: { price: true, session: true, pnl: true, time: true, brand: true } },
     recorder: {
       auto: false,              // start when a trade is entered, stop after you're flat
