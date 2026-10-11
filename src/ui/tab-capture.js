@@ -130,7 +130,7 @@ export function captureTab(app) {
   // ---------------- Share ----------------
   function share() {
     const sh = getSettings().share;
-    const kinds = [['cards', 'Screenshot cards (when you press Send / Alt+Shift+S)'], ['journal', 'Journal entries'], ['risk', 'Risk limit hits'], ['recordings', 'Trade recordings (Discord ≤ 10 MB, Telegram ≤ 50 MB)']];
+    const kinds = [['cards', 'Screenshot cards (when you press Send / Alt+Shift+S)'], ['journal', 'Journal entries'], ['risk', 'Risk limit hits'], ['recordings', 'Trade recordings (Discord ≤ 10 MB, Telegram ≤ 50 MB)'], ['recap', 'Session / day recaps']];
     return [
       el('div', { class: 'note' }, 'Your Discord webhook and Telegram bot are set up in Options and stay in the extension’s background — never on the page.'),
       app.openOptions ? el('div', { class: 'btns' }, button('Set up Discord / Telegram', () => app.openOptions('share'), 'primary', { icon: 'share' })) : null,

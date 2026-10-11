@@ -20,6 +20,7 @@ import { createMini } from './modules/capture/mini.js';
 import { createLights } from './modules/lights/index.js';
 import { createVoice } from './modules/voice/index.js';
 import { createCowatch } from './modules/cowatch/index.js';
+import { createRecap } from './ui/recap.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -112,6 +113,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   app.panel = panel;
   createBlockOverlay(app);
   app.capture = setupCapture(app);
+  app.recap = createRecap(app);
   createHud(app);
   setupJournalCapture(app);
 

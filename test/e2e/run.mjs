@@ -849,6 +849,27 @@ await check('recorder: a trade entry starts recording, the exit stops it, the cl
   await p.locator('label.switch', { hasText: 'Record my trades' }).click();
 });
 
+await check('session recap: card with today’s numbers from the Risk tab, sent to Discord', async () => {
+  const sw = context.serviceWorkers()[0];
+  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); Object.assign(settings.risk, { enabled: true, startBalance: 50000, source: 'manual' }); delete settings._meta; await chrome.storage.local.set({ settings }); });
+  await sleep(800);
+  let p = await openPanel(page, 'risk');
+  await p.locator('.subnav button[data-value="today"]').first().click();
+  for (const v of ['200', '-50']) { await p.locator('input[data-pnl-input]').fill(v); await p.locator('input[data-pnl-input]').press('Enter'); await sleep(300); }
+  p = await openPanel(page, 'risk');
+  await p.locator('button[data-make-recap]').click();
+  const text = await waitFor(async () => (await p.locator('.modal [data-recap-text]').textContent().catch(() => '')) || null, { message: 'recap modal' });
+  assert.match(text, /^Day \d{4}-\d{2}-\d{2}: [−+]?\$[\d,.]+ on \d+ trades? · \d+% wins/);
+  const size = await p.locator('.modal img[data-recap-img]').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+  assert.deepEqual(size, [1600, 900]);
+  mock.requests.length = 0;
+  await p.locator('.modal').getByRole('button', { name: 'Discord' }).click();
+  const req = await waitFor(() => mock.requests.find((r) => r.url.startsWith('/api/webhooks/')), { message: 'recap to discord' });
+  assert.match(req.text, /filename="recap\.png"/);
+  assert.match(req.text, /Day recap/);
+  await p.locator('.modal').getByRole('button', { name: 'Close' }).click();
+});
+
 console.log('\nMini windows');
 async function miniDoc(kind) {
   // Document Picture-in-Picture window if the browser supports it here, otherwise the pop-up fallback.

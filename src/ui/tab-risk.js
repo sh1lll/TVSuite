@@ -84,8 +84,23 @@ export function riskTab(app) {
     } else {
       parts.push(section('P&L from screen', el('div', { class: 'note' }, `Day P&L: ${r.live.realized == null ? 'not found — re-pick under Rules' : money(r.live.realized)} · Open P&L: ${r.live.unrealized == null ? (c.screen.unrealized ? 'not found' : 'not set') : money(r.live.unrealized)}`)));
     }
+    parts.push(recapSection());
     if (!r.block) parts.push(el('div', { class: 'btns' }, button('Reset today', async () => { if (confirm('Clear today’s trades, screen readings and fired alerts?')) { await risk.resetDay(); render(); } }, 'sm')));
     return parts;
+  }
+
+  // ---------------- Recap ----------------
+  function recapSection() {
+    const s = getSettings(), rc = s.recap;
+    const sel = el('select', { class: 'grow', dataset: { recapScope: '1' } }, el('option', { value: '' }, 'Whole trading day'), s.sessions.list.map((x) => el('option', { value: x.id }, `${x.name} session`)));
+    return section('Recap',
+      el('div', { class: 'row' }, sel, button('Make recap', () => app.recap.show({ session: s.sessions.list.find((x) => x.id === sel.value) || null }), 'primary sm', { dataset: { makeRecap: '1' } })),
+      row('Automatically', segmented({ value: rc.auto, options: [['off', 'Off'], ['session', 'At session close'], ['day', 'At day reset']], onChange: (v) => { update((x) => { x.recap.auto = v; }); render(); } })),
+      rc.auto === 'session' ? el('div', { class: 'btns', style: { flexWrap: 'wrap' } }, s.sessions.list.map((x) => {
+        const on = !rc.sessions.length || rc.sessions.includes(x.id);
+        return button(x.name, () => { update((y) => { const all = s.sessions.list.map((q) => q.id); let cur = y.recap.sessions.length ? [...y.recap.sessions] : all; cur = cur.includes(x.id) ? cur.filter((q) => q !== x.id) : [...cur, x.id]; y.recap.sessions = cur.length === all.length ? [] : cur; }); render(); }, `sm${on ? ' primary' : ''}`);
+      })) : null,
+      el('div', { class: 'note' }, 'P&L, win rate, profit factor, drawdown, R from your journal, chart time, and whether you kept your rules. Send it to Discord/Telegram from Capture → Share.'));
   }
 
   // ---------------- Rules (shaped like a broker's Risk Settings / Account Settings) ----------------

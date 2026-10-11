@@ -89,8 +89,8 @@ export const DEFAULT_SETTINGS = {
     },
   },
   share: {                      // which things go to Discord/Telegram automatically (webhook/token live in options)
-    discord: { enabled: false, cards: true, journal: false, risk: false, recordings: false },
-    telegram: { enabled: false, cards: true, journal: false, risk: false, recordings: false },
+    discord: { enabled: false, cards: true, journal: false, risk: false, recordings: false, recap: true },
+    telegram: { enabled: false, cards: true, journal: false, risk: false, recordings: false, recap: true },
   },
   voice: {
     enabled: false,             // opt-in: Chrome's recognition sends audio to Google unless on-device is available
@@ -113,6 +113,10 @@ export const DEFAULT_SETTINGS = {
       riskWarn: { on: true, color: '#f7a600' }, riskBreach: { on: true, color: '#f23645' }, riskTarget: { on: true, color: '#22c55e' },
       calm: { on: false, color: '#f7a600' },
     },
+  },
+  recap: {
+    auto: 'off',               // off | session (when a session closes) | day (at the trading-day reset)
+    sessions: [],              // [] = every session; otherwise only these session ids
   },
   cowatch: { name: '', stun: true, follow: true, share: true },
   bridge: {
