@@ -150,17 +150,77 @@ await openTab('bridge');
 await p.locator('input[data-bridge-input]').fill('ES 12-26');
 await caption('NEW · Platform Bridge: one symbol, every platform — NinjaTrader → TradingView, Tradovate, TopstepX, thinkorswim, Sierra…', 3800);
 await shot('bridge-symbols');
+await p.locator('.subnav button[data-value="watchlists"]').first().click();
 await p.locator('textarea[data-wl-in]').fill('###FUTURES,CME_MINI:ESZ2026,CME_MINI:NQZ2026,###TECH,NASDAQ:AAPL,NASDAQ:MSFT,###CRYPTO,BINANCE:BTCUSDT');
-await p.locator('.body').evaluate((b) => { b.scrollTop = 900; });
 await caption('Watchlist converter: a TradingView export (with sections) → NinjaTrader, thinkorswim, Tradovate, CSV… and back', 3600);
 await shot('bridge-watchlist');
 const [sw0] = context.serviceWorkers();
 await sw0.evaluate(() => chrome.storage.local.set({ 'bridge:seen': { 'topstepx.com': { symbol: 'CON.F.US.ENQ.Z26', at: Date.now(), url: 'https://topstepx.com/trade' } } }));
-await p.locator('.body').evaluate((b) => { b.scrollTop = 420; });
+await p.locator('.subnav button[data-value="symbols"]').first().click();
+await p.locator('.body').evaluate((b) => { b.scrollTop = 520; });
 await caption('Linked tabs: your TopstepX tab is on NQ Dec 26 → "Open here" jumps this TradingView chart to it', 3600);
 await shot('bridge-linked');
 await caption('Plus: select a ticker on any website → right-click → Open in TradingView', 2800);
-// 10 — sessions + tools
+// 10 — Risk Guard
+await openTab('risk');
+await p.locator('button[data-risk-setup]').click();
+await p.locator('label.switch', { hasText: 'Risk Guard' }).click();
+const nr = (label) => p.locator('.row', { hasText: label }).locator('input[type=number]').first();
+for (const [label, v] of [['Starting balance', '50000'], ['Personal Daily Loss Limit', '500'], ['Personal Daily Profit Target', '1000']]) { await nr(label).fill(v); await nr(label).press('Tab'); }
+await p.locator('.body').evaluate((b) => { b.scrollTop = 380; });
+await caption('NEW · Risk Guard: your prop-firm rules — PDLL, PDPT and the daily action, like your broker’s risk settings', 3800);
+await shot('risk-rules');
+await p.locator('.subnav button[data-value="today"]').first().click();
+for (const v of ['-180', '120', '-230']) { await p.locator('input[data-pnl-input]').fill(v); await p.locator('input[data-pnl-input]').press('Enter'); await sleep(250); }
+await caption('Today: day P&L against your limits — warns at 80% (sound, voice, lights). HUD shows it at the top.', 3600);
+await shot('risk-today');
+await p.locator('input[data-pnl-input]').fill('-300'); await p.locator('input[data-pnl-input]').press('Enter');
+await page.locator('#tvsuite-block-host').waitFor({ timeout: 5000 });
+await closePanel();
+await caption('Daily loss limit hit → the chart is locked until the trading day resets. Override = typed phrase + 30 s, logged.', 4200);
+await shot('risk-lock');
+// unlock for the rest of the demo (it is the demo's own rule)
+const [swr] = context.serviceWorkers();
+await swr.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.enabled = false; delete settings._meta; await chrome.storage.local.set({ settings }); });
+await sleep(1500);
+// 11 — capture
+await openTab('capture');
+await sleep(1200);
+await caption('NEW · Capture: screenshot cards ready for X or Discord — Alt+Shift+S copies one', 3200);
+await shot('capture-card');
+await p.locator('.subnav button[data-value="recorder"]').first().click();
+await p.locator('label.switch', { hasText: 'Record my trades' }).click();
+await closePanel();
+await page.evaluate(() => window.mockTV.toast('Order filled: Buy 1 BTCUSD at 63,512.00'));
+await sleep(800);
+await openTab('capture');
+await caption('Trade recorder: starts when you enter, stops when you’re flat — MP4 of the chart, no screen-share prompt', 3600);
+await shot('recorder-on');
+await page.evaluate(() => window.mockTV.toast('Position closed: BTCUSD +120.00 USD'));
+await caption('Mini windows: a floating mini chart over your other apps, or your own video/stream over the chart', 3000);
+await p.locator('.subnav button[data-value="mini"]').first().click();
+await shot('mini');
+// 12 — voice + indicators + co-watch
+await openTab('sound');
+await p.locator('.subnav button[data-value="voice"]').first().click();
+await p.locator('input[data-command-box]').fill('show N Q five minute');
+await p.locator('input[data-command-box]').press('Enter');
+await caption('NEW · Voice (Alt+Shift+V) or type it: “show NQ five minute” switches the chart without a reload', 3600);
+await shot('voice');
+await p.locator('.subnav button[data-value="lights"]').first().click();
+await caption('Room lighting: Hue, Home Assistant, WLED, Govee — session colours, flash on fills, red at your limit', 3200);
+await shot('lights');
+await openTab('bridge');
+await p.locator('.subnav button[data-value="code"]').first().click();
+await p.locator('button[data-example="python"]').click();
+await p.locator('.body').evaluate((b) => { b.scrollTop = 260; });
+await caption('NEW · Write indicators in Python, JavaScript or Java → TVSuite translates them to Pine for TradingView', 4000);
+await shot('indicators');
+await p.locator('.subnav button[data-value="cowatch"]').first().click();
+await caption('Co-watch: a friend’s chart and yours follow each other over a direct peer-to-peer link — no server', 3000);
+await shot('cowatch');
+await p.locator('.subnav button[data-value="symbols"]').first().click();
+// 13 — sessions + tools
 await openTab('sessions');
 await caption('Session clock: Tokyo / London / New York, DST-aware — each can switch to its own skin', 3000);
 await shot('sessions');
@@ -170,7 +230,7 @@ await nums.nth(0).fill('25000'); await nums.nth(1).fill('1'); await nums.nth(2).
 await caption('Position-size calculator: stocks, futures (point value), forex lots, crypto', 3000);
 await shot('position-size');
 await closePanel();
-// 11 — journal
+// 14 — journal
 await page.mouse.click(640, 380);
 await page.keyboard.press('Alt+Shift+J');
 await p.locator('.modal-bg[data-journal] .modal').waitFor();
@@ -189,7 +249,7 @@ await sleep(1500);
 await j.screenshot({ path: path.join(OUT, `${String(++still).padStart(2, '0')}-journal-page.png`) });
 await j.close();
 await page.bringToFront();
-await caption('TVSuite — skins, your media, sound, platform bridge, templates, sessions, journal, tools. Local-only, open source.', 3200);
+await caption('TVSuite — skins, sound, risk guard, capture, bridge, voice, lights, co-watch, journal. Local-only, open source.', 3200);
 await shot('end');
 
 const video = page.video();

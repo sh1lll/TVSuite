@@ -73,7 +73,32 @@ Ranked by demand evidence vs effort. See `docs/research/tradingview-gaps.md`.
 
 Full list and status in `docs/research/platform-bridge.md`. Shipped: a symbol translator for 12 platforms, Open in…, right-click "Open in TradingView" on any site, linked tabs across platforms, a watchlist converter, and ProjectX root overrides. Next: trade-history CSV → chart markers, journal export to Tradervue/TradesViz, level export to NinjaTrader/Sierra/TOS, and Pine → ThinkScript/NinjaScript through the AI provider.
 
-## F. Rejected or deferred on purpose
+## F. Round 4: your picks, built
+
+| Idea | Status | Notes |
+|---|---|---|
+| **Prop-firm rules tracker**, acting like a broker's "Personal Daily Loss Limit / Profit Target / Liquidate and Block" | ✅ | Risk Guard: PDLL, PDPT, Block/Warn, trailing max loss, consistency, brackets. P&L comes from you, the journal or the screen. Block = lock screen; liquidation stays with the broker (❌ by design). |
+| **Journal available everywhere** | ✅ | P&L $ and contracts fields; Risk tab → Journal; synced with Risk Guard |
+| **Chart-time tracker** (session-configurable) | ✅ | Per session/symbol, idle detection, limits, break reminders |
+| **Floating mini window, both ways** | ✅/🟡 | Mini chart over other apps; a player over the chart |
+| **Screenshot beautifier** | ✅ | Cards with themes, aspects, chips, watermark |
+| **Smart recorder** (starts on entry, stops when flat, very configurable) | ✅ | Pre-roll ⏳ |
+| **Indicators in Python / Java / JavaScript on TradingView** | ✅ | Translated to Pine v6 (TradingView runs only Pine) |
+| **Discord / Telegram** | ✅ | Background-only, opt-in per kind |
+| **Co-watch** | ✅/🟡 | WebRTC + copy-paste codes; TURN relay not provided |
+| **Room lighting** (off by default) | ✅/🟡 | Hue, Home Assistant, WLED, Govee cloud |
+| **Voice commands** (opt-in, labelled) | ✅/🟡 | On-device when available |
+
+### Next ideas in this lane
+- **Pre-roll recording** (segmented recorder, keep the 20 s before an entry). ⏳ M
+- **End-of-session recap card**: trades, R, chart time, rules followed, auto-sent to Discord/Telegram. ⏳ S
+- **Tilt guard**: N losses in a row → lights dim, calm cue, 60 s pause screen (Risk Guard has the plumbing). ⏳ S
+- **Pre-trade checklist** on Alt+Shift+E (your rules, saved with the trade). ⏳ S
+- **Local indicator preview**: run the translated indicator on TVSuite's own recorded prices and draw it on the skin layer. 🧪 M
+- **Co-watch drawings**: share a horizontal level or zone with your partner. 🧪 M
+- **Stream Deck / MIDI** buttons for entry/exit/record/card. ⏳ M
+
+## G. Rejected or deferred on purpose
 
 - ❌ **Bypassing plan limits** (alert counts, bars, indicators per chart) or **ad removal**: ToS and ethics. Out of scope.
 - ❌ **Client-side automated order management** (auto-breakeven, trailing) without broker support: a correctness risk with real money.

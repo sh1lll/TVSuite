@@ -23,6 +23,22 @@ TVSuite is one open-source, local-only suite for TradingView:
   - Open the current symbol on other sites.
   - **Linked tabs**: TradingView jumps to what TopstepX or your broker tab shows.
   - Right-click any ticker on any web page → **Open in TradingView**.
+- **Risk Guard** (for prop-firm and personal rules):
+  - **Rules like your broker's risk settings:** personal daily loss limit and profit target with a **Block** or warn action, firm daily loss limit, trailing max loss (static / end-of-day / intraday, with lock), consistency rule, max contracts, and per-position risk/profit brackets.
+  - **P&L sources:** your own entries, the journal, or numbers read from the screen (click the P&L in TradingView's Account Manager or TopstepX).
+  - **Warnings** come as sound, voice, notification and lights.
+  - **Block:** a lock screen until the trading day resets. TVSuite never closes positions; leave "Liquidate" to your broker.
+  - **Chart-time tracker:** time on the chart per session and symbol, with break reminders.
+- **Capture:**
+  - screenshot cards ready for X/Discord (Alt+Shift+S);
+  - a **trade recorder** that records the chart while you're in a trade (MP4/WebM, no screen-share prompt);
+  - a recordings library;
+  - **Discord & Telegram** sending of cards, journal entries, risk hits and recordings.
+- **Mini windows** (Alt+Shift+P): a floating, always-on-top mini chart (price, tick line, session, day P&L) while you're in other apps, and a floating player for your own video, YouTube or Twitch while you trade.
+- **Room lighting:** Philips Hue, Home Assistant (Govee LAN, LIFX, Nanoleaf…), WLED or Govee cloud follow the session colour, flash on fills and alerts, and go red when a limit is hit.
+- **Voice commands** (Alt+Shift+V or the command box), opt-in, with on-device recognition when Chrome offers it. For example: "show NQ five minute", "journal this", "log a loss of 200", "what's my P&L".
+- **Indicators in Python, JavaScript or Java**, translated to Pine Script v6 for TradingView: a built-in translator for indicator code, and your AI model for the rest.
+- **Co-watch:** a friend's chart and yours follow each other over a direct peer-to-peer link, with chat and "look here" pings. Connect by swapping two codes; there's no server.
 - **Template manager.** Backup, snapshot history, diff vs live, and conflict-aware restore of drawing templates and chart themes, plus a factory reset that snapshots first. It reads and writes the same backup files as victornpb/tradingview-backup and vngbh/tradingview-template-manager.
 - **Trade journal.** Alt+Shift+J captures a clean chart image with symbol, price, session, side, entry, stop, target, tags and notes. A local journal page shows stats by session, symbol, tag, side and weekday, plus an equity curve in R and CSV/JSON export.
 - **Session clock HUD, position-size calculator** (stocks / futures / forex / crypto) and **focus mode**.
@@ -61,6 +77,10 @@ npm run build            # → dist/extension, dist/tvsuite-inject.js, dist/tvsu
 | Alt+Shift+H | Hide all TVSuite UI (screenshots, streams) |
 | Alt+Shift+E / X | Sound: trade entered / closed (when TVSuite can't see your fills) |
 | Alt+Shift+M | Sound: mute / unmute |
+| Alt+Shift+S | Screenshot card → clipboard |
+| Alt+Shift+R | Start / stop recording |
+| Alt+Shift+P | Mini chart window |
+| Alt+Shift+V | Voice command (when Voice is on) |
 
 Hotkeys can be changed in **About**.
 
@@ -72,9 +92,12 @@ Hotkeys can be changed in **About**.
   - turn on **React to the chart** (opt-in) and **adaptive calm mode**;
   - generate, import or share skins.
 - **Sound tab:** turn Sound on, pick an ambient bed, choose a sound (and voice) per event, add price alerts, upload your own sounds or paste links, and edit the words that identify TradingView's order/alert pop-ups.
-- **Bridge tab:** symbol translator with copy buttons and Open in…, linked tabs, watchlist converter, ProjectX contract-root overrides.
+- **Risk tab:** Today (day P&L, limit bars, quick trade entry), Rules, Time (chart time), Journal.
+- **Capture tab:** Card, Recorder, Mini (windows), Share (what goes to Discord/Telegram).
+- **Sound tab:** Sound, Lights, Voice.
+- **Bridge tab:** Symbols (translator, Open in…, linked tabs), Lists (watchlist converter), Co-watch, Indicators.
 - **Templates tab:** Fetch, Snapshot, Export, Import, Compare with live, Restore (overwrite / skip / rename), Snapshots list, Factory reset.
-- **Options page:** AI provider and key (Anthropic, or any OpenAI-compatible endpoint including local Ollama), desktop notifications, other sites, and data export.
+- **Options page:** AI provider and key (Anthropic, or any OpenAI-compatible endpoint including local Ollama), Discord & Telegram, room-lighting devices, desktop notifications, other sites, and data export.
 
 ### Make your own skin
 
@@ -114,9 +137,9 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 ## Status
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [platform bridge](docs/research/platform-bridge.md) · [ideas](docs/IDEAS.md).
+See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [platform bridge](docs/research/platform-bridge.md) · [integration facts](docs/research/integrations.md) · [ideas](docs/IDEAS.md).
 
-**Verified:** 77 unit tests and 46 e2e checks. The e2e checks run the real extension against the mock page. They cover:
+**Verified:** 104 unit tests and 60 e2e checks. The e2e checks run the real extension against the mock page. They cover:
 - the skin layer and transparency;
 - every built-in skin;
 - overlay mode, hotkeys, reactive and calm mode;
@@ -126,6 +149,11 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/rese
 - media skins (upload and link);
 - sound: every effect and ambient bed renders non-silent, order-toast detection, price alerts, hotkeys and mute, ambient beds, your own uploaded sound, and the in-page engine in desktop mode;
 - bridge translation, watchlist conversion, and linked tabs jumping the chart;
+- Risk Guard (warn, block + override, screen picker, journal P&L), chart time;
+- screenshot card → mock Discord, recorder entry→exit→saved→mock Telegram→playable;
+- mini chart as real Document Picture-in-Picture, library player;
+- lights against mock WLED / Home Assistant servers, typed voice commands through the chart API;
+- Python/JS/Java → Pine, and co-watch between two tabs;
 - the desktop bundle, and the launcher over CDP.
 
 **Not yet verified on live TradingView** (it can't be reached from the build environment):
@@ -136,7 +164,9 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/rese
 - the wording of TradingView's real order-fill and alert pop-ups (the keywords are editable);
 - sound autoplay inside a real TradingView tab after you first click the page;
 - desktop notifications (headless Chromium can't grant the permission);
-- ProjectX contract roots other than ENQ (NQ) and MNQ.
+- ProjectX contract roots other than ENQ (NQ) and MNQ;
+- reading P&L from TradingView's Account Manager / TopstepX, real lights, a real microphone, the Pine Editor paste, co-watch across different networks;
+- whether a hidden chart tab keeps repainting into the mini window.
 
 ## License
 

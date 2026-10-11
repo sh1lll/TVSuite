@@ -2,7 +2,7 @@
 
 Status legend: ✅ done & verified (unit/e2e) · 🟡 done, needs verification on real TradingView · 🔨 in progress · ⏳ planned · 🧪 needs research · ❓ needs owner decision
 
-_Last updated: 2026-10-11 (session 1, round 3: media, sound, bridge)._
+_Last updated: 2026-10-11 (session 1, round 4: risk guard, capture, mini windows, lights, voice, indicators, co-watch)._
 
 ## Phase 0 — Research ✅
 - ✅ TradingView feature-gap survey → `docs/research/tradingview-gaps.md`
@@ -76,6 +76,41 @@ _Last updated: 2026-10-11 (session 1, round 3: media, sound, bridge)._
 - 🟡 ProjectX roots: ENQ and MNQ confirmed from published ids; EP (ES), MES and the rest unconfirmed → overridable
 - ⏳ Trade-history CSV → chart markers, journal export to Tradervue/TradesViz, levels export, Pine → ThinkScript/NinjaScript (see `docs/research/platform-bridge.md`)
 
+## Phase 8 — Risk Guard ✅ (🟡 screen-reading on real platforms)
+- ✅ Rules shaped like broker risk settings: per-position risk/profit brackets, PDLL / PDPT with a Block or Warn action, firm daily loss limit, static / EOD / intraday trailing max loss with lock-at balance, evaluation target, consistency %, max contracts; trading day resets at a set time and zone (DST-safe)
+- ✅ P&L from your entries, journal P&L (synced both ways), or read from the screen with a click-to-pick element picker
+- ✅ Warn once per day per rule (sound, voice, notification, lights); Block = lock screen until reset, rule edits locked, override needs a typed phrase + 30 s wait and is logged
+- ✅ Chart-time tracker (per day / session / symbol, idle detection, single-tab lease, daily limit, break reminders)
+- ❌ Liquidation: TVSuite never sees or closes positions — set the broker's own "Liquidate and Block"
+- 🟡 Picking P&L on TradingView's Account Manager, TopstepX and Tradovate (selectors survive hashed class names; not tried on the live sites)
+
+## Phase 9 — Capture ✅
+- ✅ Screenshot cards (6 themes, 4 aspects, symbol/price/session/day P&L/trade P&L/R chips, watermark); Alt+Shift+S copies
+- ✅ Smart recorder: chart canvases → MP4 (Chrome 126+) or WebM, no screen-share prompt; starts on entry (pop-up, hotkey, or open P&L ≠ 0), stops N s after exit; overlays; mic narration; library page with entry/exit markers
+- ✅ Discord webhooks + Telegram bots from the background only; auto-share cards, journal, risk hits, recordings; size limits respected
+- ⏳ Pre-roll (keep the seconds before an entry) — needs segmented recording; deferred
+- ⏳ End-of-session recap card (trades, R, chart time) auto-posted
+
+## Phase 10 — Mini windows ✅ (🟡 throttling when the chart tab is hidden)
+- ✅ Mini chart (Document Picture-in-Picture, pop-up fallback): live chart mirror, price, tick line, session, day P&L, record/mute
+- ✅ Player: library media, YouTube/Twitch embeds, direct links
+- 🟡 Whether Chrome keeps repainting the chart while its tab is hidden behind other apps (the tick line keeps updating from the legend either way); YouTube/Twitch embeds inside TradingView's page policy
+
+## Phase 11 — Room lighting & voice ✅ (🟡 real devices, real microphone)
+- ✅ Hue (pairing, HTTPS), Home Assistant (covers Govee LAN/LIFX/Nanoleaf/Zigbee), WLED, Govee cloud; scenes: session colour, flashes, risk red/amber, calm
+- ✅ Voice: push-to-talk / wake word, on-device recognition when available, command box (show/journal/screenshot/record/log trade/alert/P&L/price/sessions/mute/skins)
+- ✅ Chart switching through TradingView's page API (no reload) with URL fallback
+- 🟡 Hue certificate acceptance, Chrome Local Network Access prompt for extensions, Govee cloud field names (M), speech recognition inside TradingView's permissions policy
+
+## Phase 12 — Indicators in other languages ✅
+- ✅ Python / JavaScript / Java → Pine v6 translator for the indicator subset; line-numbered errors; AI translation for the rest; saved library
+- 🟡 "Paste into Pine Editor" (Monaco isn't a page global; uses focus + select-all + paste events) — copy/paste always works
+- ⏳ Strategies (strategy.*), loops via `for` translation, a local preview that draws the indicator on TVSuite's own layer
+
+## Phase 13 — Co-watch ✅ (🟡 across real networks)
+- ✅ WebRTC data channel with copy-paste handshake codes, symbol follow, chat, pings; optional STUN
+- 🟡 Different networks (STUN works for most home routers; strict NATs need a TURN relay, which TVSuite doesn't run)
+
 ## Phase 5 — Desktop ✅ (🟡 on real installs)
 - ✅ `desktop/launcher.mjs`: `attach | launch | doctor`, loopback-only, chart-URL and CDP-method allow-lists, `Page.enable` + persistent injection across reloads (verified e2e against Chromium with a debug port)
 - 🟡 Windows MSIX activation via AUMID (community-reported working on 3.3.0)
@@ -83,8 +118,9 @@ _Last updated: 2026-10-11 (session 1, round 3: media, sound, bridge)._
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 77 unit tests
-- `npm run e2e`: 46 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 104 unit tests
+- `npm run e2e`: 60 checks (the suite runs a test copy of the extension that may reach 127.0.0.1, for mock Discord/Telegram/light servers)
+- Known: before the multi-tab fix the co-watch check failed in 2 of 3 full runs (two panels re-saving settings). After the fix the new two-tab check failed once (cause not captured), then 2 of 2 full runs passed; it's now instrumented to report what blocked the click if it recurs ⏳ with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓
@@ -94,7 +130,12 @@ _Last updated: 2026-10-11 (session 1, round 3: media, sound, bridge)._
    - try the Templates tab on a test account first;
    - try `node desktop/launcher.mjs doctor`, then `node desktop/launcher.mjs` with TradingView Desktop;
    - Sound: place a paper trade and check the entry sound fires; if not, copy the pop-up's text into Sound → Trade & alert detection;
-   - Bridge: on TopstepX (added under Other sites), check the symbol appears under Bridge → Linked tabs, and that its contract id matches the ProjectX row.
+   - Bridge: on TopstepX (added under Other sites), check the symbol appears under Bridge → Linked tabs, and that its contract id matches the ProjectX row;
+   - Risk Guard: set your PDLL/PDPT, then Rules → P&L source → Read from screen → pick your day P&L in TradingView's Account Manager (or TopstepX) and check Today shows it;
+   - Recorder: Capture → Recorder → Record my trades, place a paper trade, and check the clip in Recordings;
+   - Mini chart: Alt+Shift+P, switch to another app, and see whether the chart keeps moving;
+   - Lights / Discord / Telegram: add a device or webhook in Options and press Test;
+   - Voice: Sound → Voice, press Alt+Shift+V and say "show NQ five minute".
 3. The gallery index URL assumes `main` on `sh1lll/TVSuite`; change `GALLERY_URL` in `src/background.js` if you host it elsewhere.
 
 ## Decisions log
@@ -108,4 +149,10 @@ _Last updated: 2026-10-11 (session 1, round 3: media, sound, bridge)._
 - D9: Desktop notifications are an optional permission, requested only when turned on.
 - D10: Bridge data never leaves the browser; linked tabs use extension storage and expire after 12 h.
 - D11: Only ProjectX roots confirmed from published contract ids are shown as verified; everything else is flagged and overridable rather than guessed silently.
+- D12: Risk Guard blocks the chart page and warns; it never liquidates (no access to orders by design). Broker-side PDLL/"Liquidate and Block" is the real enforcement.
+- D13: All outbound integrations (Discord, Telegram, lights, AI) run in the background worker; secrets live in their own storage keys that the page never reads.
+- D14: The recorder draws the chart's own canvases instead of screen capture: no permission prompt, records only the chart, works in the background tab.
+- D15: Indicators are translated to Pine (TradingView can't run other languages); the built-in translator handles a defined subset and says exactly which line it can't, AI handles the rest.
+- D16: Co-watch has no server; handshake by copy-paste codes; optional public STUN only.
+- D17: A tab's open panel tab/sub-view is per tab (not synced), so several open charts don't fight.
 - D7: Session HUD and tab use a cached next-event search (measured 50–75 ms/s before).

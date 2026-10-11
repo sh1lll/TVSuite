@@ -27,7 +27,7 @@ Status: ✅ shipped · 🔨 partial · ⏳ planned · 🧪 needs research · ❌
 | **Alerts → other platforms**: list your TradingView alerts and export them as a CSV of price/condition rows | M. Needs the alerts endpoints | 🧪 |
 | **Journal → Tradervue / TradesViz / TraderSync / Edgewonk**: CSV in each tool's generic import layout | S. The journal is already local | ⏳ Field mapping per tool |
 | **Chart theme → other platforms**: export TradingView colours as a NinjaTrader skin, Sierra graphics settings or a TOS colour scheme | M (each target has its own format) | ⏳ Start with NinjaTrader, whose skins are XAML resource dictionaries |
-| **Pine → ThinkScript / NinjaScript / EasyLanguage** through the AI provider already configured, with side-by-side diff and a warning that translations need review | M. Uses the existing AI plumbing | ⏳ Opt-in, the user's own key |
+| **Pine → ThinkScript / NinjaScript / EasyLanguage** through the AI provider already configured, with side-by-side diff and a warning that translations need review | M. Uses the existing AI plumbing | ⏳ Opt-in, the user's own key. The reverse direction (Python/JS/Java → Pine) ✅ shipped in round 4 |
 | **Layout screenshot pack**: every chart in a multi-chart layout exported as PNGs with symbol and time | S | ⏳ Builds on journal capture |
 
 ## 3. Other platforms → TradingView (import)
@@ -48,6 +48,7 @@ Status: ✅ shipped · 🔨 partial · ⏳ planned · 🧪 needs research · ❌
 | **TradingView Desktop ⇄ browser**: the desktop launcher relays the linked symbol over CDP | M | ⏳ |
 | **Broker DOM ⇄ TradingView**: when TopstepX/Tradovate changes contract, the TradingView chart follows | ✅ via linked tabs once the site is added in the popup | 🟡 Needs the symbol selector on the real TopstepX DOM |
 | **Crosshair/time sync** between a TradingView tab and another charting site | L. Needs each site's time axis | 🧪 |
+| **Co-watch with a friend** (symbol follow, chat, pings) over WebRTC | ✅ shipped (round 4) | ✅ |
 | **Discord/X/news → TradingView**: cashtag hover cards with a mini chart and "Open in TradingView" | M. A content script on chosen sites only, opt-in | ⏳ |
 | **Clipboard watcher**: copy `ESZ26` anywhere and TVSuite offers to open it on the chart | S. Needs a page focus event and the clipboard permission | ⏳ Opt-in |
 
