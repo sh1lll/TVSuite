@@ -21,6 +21,7 @@ window.addEventListener('message', (e) => {
     case 'fps': host.setFps(m.fps); break;
     case 'scale': host.setScale(m.scale); break;
     case 'pause': host.setPaused(m.paused); break;
+    case 'thumb': host.thumbnail(m.skin, m.width, m.height).then((blob) => parent.postMessage({ tvsuite: 'sandbox', token, type: 'thumb', id: m.id, blob }, '*')); break;
     default: break;
   }
 });

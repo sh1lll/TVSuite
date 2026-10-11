@@ -9,6 +9,7 @@ TVSuite is one open-source, local-only suite for TradingView:
   - **Adaptive calm mode** quiets the background automatically when the market gets wild.
   - Skins can **switch at Tokyo / London / New York opens**.
   - You can **generate new skins from a sentence** with any model you connect.
+  - **Skin Studio**: remix any built-in with your own colours and motion, or write your own canvas/GLSL skin. Starter custom skins are included.
   - Skins can be **shared as links**.
 - **Template manager.** Backup, snapshot history, diff vs live, and conflict-aware restore of drawing templates and chart themes, plus a factory reset that snapshots first. It reads and writes the same backup files as victornpb/tradingview-backup and vngbh/tradingview-template-manager.
 - **Trade journal.** Alt+Shift+J captures a clean chart image with symbol, price, session, side, entry, stop, target, tags and notes. A local journal page shows stats by session, symbol, tag, side and weekday, plus an equity curve in R and CSV/JSON export.
@@ -99,7 +100,7 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [ideas](docs/IDEAS.md).
 
-**Verified:** 60 unit tests and 32 e2e checks. The e2e checks run the real extension against the mock page. They cover:
+**Verified:** 61 unit tests and 35 e2e checks. The e2e checks run the real extension against the mock page. They cover:
 - the skin layer and transparency;
 - every built-in skin;
 - overlay mode, hotkeys, reactive and calm mode;

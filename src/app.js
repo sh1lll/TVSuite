@@ -13,6 +13,7 @@ import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
 import { maybeAutoBackup } from './modules/templates/snapshots.js';
+import { starterSkins } from './modules/skins/starters.js';
 import { createTvApi } from './modules/templates/api.js';
 import { WORKER_SOURCE } from 'tvsuite:worker-source';
 
@@ -45,6 +46,14 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   }
 
   const bus = new Bus();
+
+  // First run (or first run after an update that added starters): install starter custom skins once.
+  if (!settings.skins.seeded) {
+    const have = new Set(settings.skins.library.map((x) => x.id));
+    settings.skins.library = [...settings.skins.library, ...starterSkins().filter((x) => !have.has(x.id))];
+    settings.skins.seeded = true;
+    await saveSettings(settings);
+  }
   const persist = debounce(() => saveSettings(settings), 250);
 
   const app = {

@@ -4,7 +4,8 @@
 // document's CSP (connect-src 'none') blocks network access as a second layer.
 import { SkinRunner } from '../modules/skins/runner.js';
 
-const send = self.postMessage.bind(self);
+const post = self.postMessage.bind(self);
+const send = (msg, transfer) => post(msg, transfer || []);
 const raf = (self.requestAnimationFrame || ((fn) => setTimeout(() => fn(performance.now()), 16))).bind(self);
 const caf = (self.cancelAnimationFrame || clearTimeout).bind(self);
 
@@ -39,6 +40,18 @@ self.onmessage = (e) => {
       case 'fps': runner?.setFps(m.fps); break;
       case 'pause': runner?.setPaused(m.paused); break;
       case 'dispose': runner?.dispose(); clearInterval(heartbeat); self.close(); break;
+      case 'thumb': {
+        // Render `frames` frames synchronously on our own OffscreenCanvas and hand back a bitmap.
+        const canvas = new OffscreenCanvas(m.width, m.height);
+        let queued = null, now = 0;
+        const r = new SkinRunner({ canvas, kind: m.kind, program: m.program, glsl: m.glsl, params: m.params, fps: 30, dpr: 1,
+          raf: (fn) => { queued = fn; return 1; }, caf: () => {}, now: () => now, onError: (message) => { throw new Error(message); } });
+        r.resize(m.width, m.height, 1);
+        for (let i = 0; i < (m.frames || 40); i++) { now += 34; const f = queued; queued = null; f?.(now); }
+        // A Blob (unlike an ImageBitmap) survives being posted across processes to the TradingView page.
+        canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 }).then((blob) => { send({ type: 'thumb', blob }); self.close(); });
+        break;
+      }
       default: break;
     }
   } catch (err) {

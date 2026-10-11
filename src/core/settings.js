@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
     sessionThemes: false,
     perSymbol: {},          // { [symbol]: skin record } — wins over session themes and the default skin
     playlist: { enabled: false, minutes: 15, ids: [] }, // rotate through these skin ids on the clock
+    seeded: false,          // starter custom skins installed into the library once
   },
   sessions: {
     list: structuredClone(DEFAULT_SESSIONS),
@@ -49,6 +50,7 @@ export const DEFAULT_SETTINGS = {
     fab: true,
     panelOpen: false,
     tab: 'skins',
+    skinsView: 'library',
   },
   sites: [],                // custom sites for the generic adapter: { host, selector }
 };

@@ -67,7 +67,7 @@ export function sessionsTab(app) {
         })),
       el('div', { class: 'note' }, 'Driven by the clock alone (IANA time zones, DST-aware). Overlaps hand over to the most recently opened session. Holidays are not modelled.'),
     );
-    paintClock();
+    requestAnimationFrame(paintClock);
   }
 
   const timer = setInterval(paintClock, 1000);

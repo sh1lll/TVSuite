@@ -57,37 +57,53 @@ await shot('before');
 await page.keyboard.press('Alt+Shift+K');
 await caption('Alt+Shift+K: TVSuite slides a live skin UNDER the candles — no TradingView setting is changed', 3600);
 await shot('aurora-under');
-// 3 — gallery of skins
-await openTab('skins');
-await caption('Skins tab: 10 canvas + 3 shader skins, all rendered in a sandboxed worker', 2600);
-await shot('panel');
-for (const [id, label] of [['starfield', 'Starfield'], ['rain-neon', 'Rainy Neon Street'], ['synthwave', 'Synthwave Grid'], ['silk', 'Silk (GPU shader)'], ['embers', 'Embers — green above the daily open, red below']]) {
+// 3 — library with live previews
+const sub = async (v) => { if (await p.locator('.panel').isHidden()) await p.locator('.fab').click(); await p.locator('.tab[data-tab="skins"]').click(); await p.locator(`.subnav button[data-value="${v}"]`).first().click(); };
+await sub('library');
+await caption('Skins library: every card is a live preview — hover to animate', 2400);
+await sleep(2500);
+await shot('library');
+await p.locator('.card[data-skin="custom-tokyo-rain"]').hover();
+await caption('Starter custom skins ship ready to use — remixes and community gallery skins', 2600);
+await shot('library-hover');
+for (const [id, label] of [['custom-tokyo-rain', 'Tokyo Rain — a custom remix'], ['synthwave', 'Synthwave Grid'], ['silk', 'Silk (GPU shader)'], ['fireflies', 'Fireflies — a community code skin, sandboxed']]) {
+  await sub('library');
   await p.locator(`.card[data-skin="${id}"]`).click();
   await closePanel();
   await caption(label, 2600);
   await shot(id);
-  await openTab('skins');
 }
-// 4 — look controls
-const ranges = p.locator('input[type=range]');
-await caption('Look: opacity, dim, blur, saturation, frame rate, resolution', 1200);
-await ranges.nth(1).fill('0.55');
-await sleep(900);
-await ranges.nth(1).fill('0.25');
-// 5 — reactive + calm
-await p.getByText('Reactive (reads visible price text').click();
-await p.locator('.sec', { hasText: 'React to the chart' }).scrollIntoViewIfNeeded();
-await caption('Opt-in reactive mode reads the price already on screen — locally, nothing leaves the browser', 3200);
+// 4 — studio
+await sub('library');
+await p.locator('.card.add').click();
+const remix = p.locator('.sec', { hasText: 'Remix a built-in' });
+await remix.locator('select').selectOption('aurora');
+await remix.locator('input[type=text]').fill('Violet Hour');
+await caption('Skin Studio: remix any built-in with your own colours and motion — no AI or code needed', 2400);
+for (const v of [200, 240, 280, 300]) { await remix.locator('input[type=range]').nth(0).fill(String(v)); await sleep(350); }
+await remix.locator('input[type=range]').nth(1).fill('70');
+await sleep(1200);
+await shot('studio-remix');
+await remix.getByRole('button', { name: 'Save to My skins' }).click();
+await caption('Saved to My skins — and it is now the live skin on the chart', 2600);
+await closePanel();
+await sleep(1500);
+await shot('custom-skin-live');
+await sub('studio');
+await p.locator('.seg.subnav').nth(1).locator('button[data-value="code"]').click();
+await caption('Or write your own canvas/GLSL skin — it runs in a sandboxed worker, never in the page', 3000);
+await shot('studio-code');
+// 5 — look + smart
+await sub('look');
+await caption('Look: under-candles or overlay, opacity, dim, blur, frame rate, resolution', 2600);
+await shot('look');
+await sub('smart');
+await p.locator('label.switch', { hasText: /^Reactive/ }).click();
+await caption('Smart: opt-in reactive mode reads the price on screen — locally, nothing leaves the browser', 3000);
 await page.evaluate(() => window.mockTV.setVolatility(45));
-await caption('Market goes wild → adaptive calm mode quiets the background automatically', 6000);
+await caption('Market goes wild → adaptive calm mode quiets the background automatically', 5500);
 await shot('calm-mode');
 await page.evaluate(() => window.mockTV.setVolatility(1));
-// 6 — overlay mode
-await p.locator('select').first().selectOption('overlay');
-await closePanel();
-await caption('Overlay mode: a blend-mode fallback that never touches the page', 2600);
-await openTab('skins');
-await p.locator('select').first().selectOption('under');
 // 7 — templates
 await openTab('templates');
 await caption('Templates tab: back up drawing templates and themes from your account', 1800);

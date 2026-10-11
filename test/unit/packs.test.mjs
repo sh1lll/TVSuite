@@ -43,3 +43,12 @@ test('slugify', () => {
   assert.equal(slugify('  Ünïcode Skin!! '), 'unicode-skin');
   assert.equal(slugify(''), 'skin');
 });
+
+test('starter custom skins validate and include remixes and gallery skins', async () => {
+  const { starterSkins } = await import('../../src/modules/skins/starters.js');
+  const list = starterSkins();
+  assert.ok(list.length >= 9);
+  for (const sk of list) assert.ok(validateSkin(sk).ok, sk.id);
+  assert.ok(list.some((x) => x.kind === 'builtin' && x.base === 'aurora'));
+  assert.equal(new Set(list.map((x) => x.id)).size, list.length, 'unique ids');
+});

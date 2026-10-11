@@ -191,6 +191,22 @@ export class SkinHost {
     this._broadcast({ type: 'pause', paused: this.paused }, (r) => r.setPaused(this.paused));
   }
 
+  // Renders a still preview of any skin inside a throwaway worker (so untrusted code never runs here).
+  thumbnail(skin, width = 384, height = 216, frames = 24) {
+    return new Promise((resolve) => {
+      let spec;
+      try { spec = this.resolve(skin); } catch (_) { resolve(null); return; }
+      if (!spec || spec.kind === 'media' || !this.workerUrl) { resolve(null); return; }
+      let worker;
+      try { worker = new Worker(this.workerUrl); } catch (_) { resolve(null); return; }
+      const done = (v) => { clearTimeout(timer); worker.terminate(); resolve(v); };
+      const timer = setTimeout(() => done(null), 15000);
+      worker.onmessage = (e) => { if (e.data?.type === 'thumb') done(e.data.blob || null); else if (e.data?.type === 'error') done(null); };
+      worker.onerror = (e) => { e.preventDefault?.(); done(null); };
+      worker.postMessage({ type: 'thumb', kind: spec.kind, program: spec.program, glsl: spec.glsl, params: spec.params, width, height, frames });
+    });
+  }
+
   destroy() {
     this.ro.disconnect();
     for (const l of this.layers) this._dispose(l);

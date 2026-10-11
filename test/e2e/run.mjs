@@ -48,6 +48,12 @@ async function regionStats(page, clip) {
 }
 const CLIP = { x: 700, y: 560, width: 300, height: 200 };
 
+async function skinsView(v) {
+  const p = await openPanel(page, 'skins');
+  await p.locator(`.subnav button[data-value="${v}"]`).first().click();
+  return p;
+}
+
 async function openPanel(page, tab) {
   const p = panel(page);
   if (await p.locator('.panel').isHidden()) await p.locator('.fab').click();
@@ -89,8 +95,8 @@ await check('skin is visible behind the chart and animates', async () => {
   await page.screenshot({ path: path.join(OUT, '01-under-aurora.png') });
 });
 
-await check('every built-in canvas and shader skin starts without errors', async () => {
-  const p = await openPanel(page, 'skins');
+await check('every built-in, starter and gallery skin starts without errors', async () => {
+  const p = await skinsView('library');
   const ids = await p.locator('.card[data-skin]').evaluateAll((els) => els.map((e) => e.dataset.skin));
   assert.ok(ids.length >= 13, `found ${ids.length} skins`);
   const failures = [];
@@ -102,14 +108,62 @@ await check('every built-in canvas and shader skin starts without errors', async
       const d = await layerData(page);
       if (d.state !== 'running') failures.push(`${id}: ${d.state} ${d.error || ''}`);
     } catch (err) { failures.push(`${id}: ${err.message}`); }
-    if (['synthwave', 'rain-neon', 'silk', 'nebula'].includes(id)) { await p.locator('.x').click(); await sleep(400); await page.screenshot({ path: path.join(OUT, `02-skin-${id}.png`) }); await openPanel(page, 'skins'); }
+    if (['synthwave', 'rain-neon', 'silk', 'nebula'].includes(id)) { await p.locator('.x').click(); await sleep(400); await page.screenshot({ path: path.join(OUT, `02-skin-${id}.png`) }); await skinsView('library'); }
   }
   assert.deepEqual(failures, []);
 });
 
+await check('starter custom skins are installed and every card shows a rendered preview', async () => {
+  const p = await skinsView('library');
+  const mine = await p.locator('[data-lib="mine"] .card[data-skin]').evaluateAll((els) => els.map((e) => e.dataset.skin));
+  for (const id of ['custom-midnight-aurora', 'custom-tokyo-rain', 'fireflies', 'ocean-dusk-shader']) assert.ok(mine.includes(id), `starter ${id} present`);
+  // Code skins are previewed by the sandbox worker; wait until their canvases hold real (dark) frames, not the bright placeholder.
+  await waitFor(() => page.evaluate(() => {
+    const r = document.getElementById('tvsuite-panel-host').shadowRoot;
+    return ['fireflies', 'snowfall', 'topo-lines', 'aurora', 'custom-tokyo-rain'].every((id) => {
+      const c = r.querySelector(`.card[data-skin="${id}"] canvas`); if (!c || !c.width) return false;
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let sum = 0;
+      for (let i = 0; i < d.length; i += 64) sum += d[i] + d[i + 1] + d[i + 2];
+      return sum / (d.length / 64) < 120;
+    });
+  }), { timeout: 30000, message: 'rendered previews' });
+  await page.screenshot({ path: path.join(OUT, '12-library.png') });
+});
+
+await check('studio remix: tweak a built-in, preview on chart, save to My skins', async () => {
+  let p = await skinsView('library');
+  await p.locator('.card.add').click();
+  await p.locator('.sec', { hasText: 'Remix a built-in' }).locator('input[type=text]').fill('E2E Remix');
+  await p.locator('.sec', { hasText: 'Remix a built-in' }).locator('select').selectOption('plexus');
+  const sec = p.locator('.sec', { hasText: 'Remix a built-in' });
+  await sec.locator('input[type=range]').nth(1).fill('300'); // hue
+  await sec.getByRole('button', { name: 'Try on chart' }).click();
+  await waitFor(async () => (await layerData(page))?.skin === 'studio-preview', { message: 'preview running' });
+  await sec.getByRole('button', { name: 'Save to My skins' }).click();
+  const d = await waitFor(async () => { const x = await layerData(page); return x?.skin?.startsWith('custom-e2e-remix') && x?.state === 'running' && x; }, { message: 'saved remix active' });
+  assert.ok(d);
+  p = await skinsView('library');
+  assert.equal(await p.locator('[data-lib="mine"] .card', { hasText: 'E2E Remix' }).count(), 1);
+});
+
+await check('studio code: write a canvas skin, run it in the sandbox, save it', async () => {
+  let p = await skinsView('studio');
+  await p.locator('.seg.subnav').nth(1).locator('button[data-value="code"]').click();
+  const sec = p.locator('.sec', { hasText: 'Write a skin' });
+  await sec.locator('input[type=text]').fill('E2E Code');
+  await sec.locator('textarea').fill('function draw(ctx, api) { ctx.fillStyle = "#00ff00"; ctx.fillRect(0, 0, api.w, api.h); }');
+  await sec.getByRole('button', { name: 'Save to My skins' }).click();
+  await waitFor(async () => { const x = await layerData(page); return x?.skin?.startsWith('custom-e2e-code') && x?.state === 'running'; }, { message: 'code skin running' });
+  await sec.locator('textarea').fill('this is not a skin');
+  await sec.getByRole('button', { name: 'Update skin' }).click();
+  assert.match(await sec.locator('.note.err').textContent(), /draw/);
+  p = await skinsView('library');
+  await p.locator('.card[data-skin="aurora"]').click();
+});
+
 await check('overlay mode stops patching the page and blends above the chart', async () => {
-  const p = await openPanel(page, 'skins');
-  await p.locator('select').first().selectOption('overlay');
+  let p = await skinsView('look');
+  await p.locator('.seg.mode button[data-value="overlay"]').click();
   const d = await waitFor(async () => { const x = await layerData(page); return x?.z === '3' && x; }, { message: 'overlay layer' });
   assert.equal(d.blend, 'screen');
   const attrs = await html(page);
@@ -119,13 +173,13 @@ await check('overlay mode stops patching the page and blends above the chart', a
   assert.equal(px[3], 255, 'chart background painted normally again');
   await p.locator('.x').click();
   await page.screenshot({ path: path.join(OUT, '03-overlay.png') });
-  await openPanel(page, 'skins');
-  await p.locator('select').first().selectOption('under');
+  p = await skinsView('look');
+  await p.locator('.seg.mode button[data-value="under"]').click();
   await waitFor(async () => (await layerData(page))?.z === '-1', { message: 'back to under' });
 });
 
 await check('look controls apply CSS filters (dim, blur, black & white)', async () => {
-  const p = await openPanel(page, 'skins');
+  const p = await skinsView('look');
   const ranges = p.locator('input[type=range]');
   await ranges.nth(2).fill('6'); // blur
   await p.getByText('Black & white').click();
@@ -137,8 +191,9 @@ await check('look controls apply CSS filters (dim, blur, black & white)', async 
 });
 
 await check('skin parameter sliders tweak the live renderer without respawning it', async () => {
-  const p = await openPanel(page, 'skins');
+  let p = await skinsView('library');
   await p.locator('.card[data-skin="starfield"]').click();
+  p = await skinsView('look');
   await waitFor(async () => { const x = await layerData(page); return x?.skin === 'starfield' && x?.state === 'running'; }, { message: 'starfield running' });
   const frames = () => page.evaluate(() => document.getElementById('tvsuite-skin-layer') && 1);
   const statesSeen = [];
@@ -151,6 +206,7 @@ await check('skin parameter sliders tweak the live renderer without respawning i
   assert.ok(!statesSeen.includes('starting'), `no new renderer started while dragging (${[...new Set(statesSeen)]})`);
   await p.getByRole('button', { name: 'Reset' }).click();
   await waitFor(async () => (await layerData(page))?.state === 'running', { message: 'running after reset' });
+  p = await skinsView('library');
   await p.locator('.card[data-skin="aurora"]').click();
 });
 
@@ -167,8 +223,8 @@ await check('hotkey Alt+Shift+K toggles the skin and restores the chart backgrou
 });
 
 await check('reactive signals are read from the legend and calm mode engages on volatility', async () => {
-  const p = await openPanel(page, 'skins');
-  await p.getByText('Reactive (reads visible price text').click();
+  const p = await skinsView('smart');
+  await p.locator('label.switch', { hasText: /^Reactive/ }).click();
   await waitFor(async () => (await layerData(page))?.intensity, { message: 'signals flowing' });
   const calm0 = +(await layerData(page)).calm;
   await page.evaluate(() => window.mockTV.setVolatility(40));
@@ -223,7 +279,7 @@ await check('throwing skin reports an error instead of breaking the page', async
   await page.goto(`https://www.tradingview.com/chart/abc123/#tvskin=${code}`);
   await panel(page).getByRole('button', { name: 'Add & run in sandbox' }).click();
   await waitFor(async () => (await layerData(page))?.state === 'error', { message: 'error state' });
-  const p = await openPanel(page, 'skins');
+  const p = await skinsView('library');
   assert.match(await p.locator('.note.err').first().textContent(), /boom/);
   await p.locator('.card[data-skin="aurora"]').click();
   await waitFor(async () => (await layerData(page))?.state === 'running', { message: 'recovered with aurora' });
@@ -375,16 +431,16 @@ await check('my media: an uploaded image becomes a skin via the extension media 
   assert.ok(st.r > 100 && st.b > 100 && st.g < 60, `expected magenta under candles, got ${JSON.stringify(st)}`);
   await page.screenshot({ path: path.join(OUT, '09-media-skin.png') });
   // Switching back to a code skin swaps to the sandbox frame again.
-  const p = await openPanel(page, 'skins');
+  const p = await skinsView('library');
   await p.locator('.card[data-skin="plexus"]').click();
   await waitFor(async () => { const x = await layerData(page); return x?.skin === 'plexus' && x?.state === 'running'; }, { message: 'back to sandbox skin' });
   await p.locator('.x').click();
 });
 
 await check('gallery adds a community skin that renders within budget', async () => {
-  const p = await openPanel(page, 'skins');
+  const p = await skinsView('library');
   await p.getByRole('button', { name: 'Gallery' }).click();
-  await p.locator('.modal .row', { hasText: 'Topo Lines' }).getByRole('button').click();
+  await p.locator('.modal .grid > .row', { hasText: 'Topo Lines' }).getByRole('button', { name: /Add|Use/ }).click();
   const d = await waitFor(async () => { const x = await layerData(page); return x?.skin === 'topo-lines' && x?.state === 'running' && x; }, { timeout: 10000, message: 'gallery skin running' });
   assert.ok(d);
   await sleep(2500);
@@ -396,23 +452,26 @@ await check('gallery adds a community skin that renders within budget', async ()
 });
 
 await check('per-symbol skin overrides the default and follows symbol changes', async () => {
-  const p = await openPanel(page, 'skins');
+  let p = await skinsView('library');
   await p.locator('.card[data-skin="embers"]').click();
   await waitFor(async () => (await layerData(page))?.skin === 'embers', { message: 'embers active' });
+  p = await skinsView('smart');
   await p.getByRole('button', { name: /Use current skin on BTCUSD/ }).click();
+  p = await skinsView('library');
   await p.locator('.card[data-skin="aurora"]').click();
   await waitFor(async () => (await layerData(page))?.skin === 'embers', { message: 'BTCUSD stays pinned to embers' });
   await page.evaluate(() => window.mockTV.setSymbol('ETHUSD'));
   await waitFor(async () => (await layerData(page))?.skin === 'aurora', { timeout: 6000, message: 'ETHUSD uses the default skin' });
   await page.evaluate(() => window.mockTV.setSymbol('BTCUSD'));
   await waitFor(async () => (await layerData(page))?.skin === 'embers', { timeout: 6000, message: 'back to pinned skin' });
+  p = await skinsView('smart');
   await p.getByRole('button', { name: 'Unpin' }).click();
   await waitFor(async () => (await layerData(page))?.skin === 'aurora', { message: 'unpinned' });
   await p.locator('.x').click();
 });
 
 await check('rotation shows a selected playlist skin, and the selected skin returns when rotation is off', async () => {
-  const p = await openPanel(page, 'skins');
+  const p = await skinsView('smart');
   await p.getByText('Rotate through selected skins').click();
   await p.locator('.sec', { hasText: 'Rotation' }).locator('label', { hasText: 'Plasma (shader)' }).locator('input').check();
   await waitFor(async () => (await layerData(page))?.skin === 'plasma', { timeout: 8000, message: 'rotation picks plasma' });

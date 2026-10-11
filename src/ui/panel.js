@@ -1,7 +1,7 @@
 // Floating panel with tabs, plus the launcher button. Draggable; position remembered.
 import { el, setChildren } from '../core/dom.js';
 import { storage } from '../core/storage.js';
-import { CSS } from './kit.js';
+import { CSS, icon, brandMark } from './kit.js';
 import { skinsTab } from './tab-skins.js';
 import { templatesTab } from './tab-templates.js';
 import { sessionsTab } from './tab-sessions.js';
@@ -9,6 +9,7 @@ import { toolsTab } from './tab-tools.js';
 import { aboutTab } from './tab-about.js';
 
 const ALL_TABS = [['skins', 'Skins'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
+const SHORT = { templates: 'Backup' };
 const POS_KEY = 'ui:pos';
 
 export async function createPanel(app) {
@@ -20,19 +21,20 @@ export async function createPanel(app) {
   app.root = root;
 
   const pos = (await storage.get(POS_KEY)) || { x: 52, y: null };
-  const fab = el('div', { class: 'fab', title: `TVSuite (${app.getSettings().ui.panelHotkey})`, role: 'button', tabindex: '0' }, 'TVS');
+  const fab = el('div', { class: 'fab', title: `TVSuite (${app.getSettings().ui.panelHotkey})`, role: 'button', tabindex: '0', 'aria-label': 'Open TVSuite' }, brandMark());
   const body = el('div', { class: 'body' });
   const tabsBar = el('div', { class: 'tabs' });
   const panel = el('div', { class: 'panel', hidden: true },
-    el('div', { class: 'head' }, el('span', { class: 'logo' }, el('b', {}, 'TV'), 'Suite'), el('span', { class: 'sp' }), el('button', { class: 'x', title: 'Close', onclick: () => setOpen(false) }, '✕')),
+    el('div', { class: 'head' }, el('span', { class: 'brand' }, brandMark(), 'TVSuite', el('small', {}, `v${app.version}`)), el('span', { class: 'sp' }),
+      el('button', { class: 'x', title: `Close (${app.getSettings().ui.panelHotkey})`, 'aria-label': 'Close', onclick: () => setOpen(false) }, icon('close'))),
     tabsBar, body);
   root.append(fab, panel);
 
   function place() {
     const y = pos.y ?? window.innerHeight - 110;
     Object.assign(fab.style, { left: '9px', top: `${Math.max(40, Math.min(window.innerHeight - 44, y))}px` });
-    const ph = Math.min(window.innerHeight * 0.78, 720);
-    Object.assign(panel.style, { left: `${Math.max(4, Math.min(window.innerWidth - 404, pos.x))}px`, top: `${Math.max(4, Math.min(window.innerHeight - ph - 4, (pos.py ?? window.innerHeight - ph - 60)))}px` });
+    const ph = Math.min(window.innerHeight * 0.82, 760);
+    Object.assign(panel.style, { left: `${Math.max(4, Math.min(window.innerWidth - 428, pos.x))}px`, top: `${Math.max(4, Math.min(window.innerHeight - ph - 4, (pos.py ?? window.innerHeight - ph - 60)))}px` });
   }
   window.addEventListener('resize', place);
 
@@ -59,7 +61,7 @@ export async function createPanel(app) {
   let current = TABS.some(([id]) => id === app.getSettings().ui.tab) ? app.getSettings().ui.tab : 'skins';
   function showTab(id) {
     current = id;
-    setChildren(tabsBar, ...TABS.map(([tid, label]) => el('button', { class: `tab${tid === id ? ' on' : ''}`, onclick: () => showTab(tid), dataset: { tab: tid } }, label)));
+    setChildren(tabsBar, ...TABS.map(([tid, label]) => el('button', { class: `tab${tid === id ? ' on' : ''}`, onclick: () => showTab(tid), dataset: { tab: tid }, title: label }, icon(tid), SHORT[tid] || label)));
     const v = view(id);
     if (id === 'about' || id === 'templates') v.render();
     setChildren(body, v.el);

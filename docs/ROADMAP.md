@@ -27,7 +27,9 @@ _Last updated: 2026-10-11 (session 1)._
 - ✅ AI generation: Anthropic SDK (`claude-opus-5-5`, JSON schema output, refusal fallback) or OpenAI-compatible
 - ✅ My media: own MP4/WebM/MOV/GIF/PNG/JPG/WebP/AVIF stored in extension IndexedDB, played by the extension-origin media frame
 - ✅ Skin rotation (clock-derived, consistent across tabs) · ⏳ per-chart layers in multi-chart layouts; `iChannel` textures for shaders; volume-reactive input
-- ⏳ Shader/canvas editor with live preview (options page)
+- ✅ Skin Studio: remix any built-in (live preview, params, colours) or write canvas/GLSL code; edit, duplicate, share from My skins
+- ✅ Starter custom skins installed on first run (5 remixes + gallery skins)
+- ✅ Panel redesign: live animated previews on every card (code skins previewed via the sandbox), hero, icon tabs, switches, filled sliders, segmented controls
 
 ### Measured skin cost (JS per frame inside the worker, headless Chromium, no GPU)
 | skin | ms | skin | ms | skin | ms |
@@ -64,8 +66,8 @@ _Last updated: 2026-10-11 (session 1)._
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 60 unit tests
-- `npm run e2e`: 32 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 61 unit tests
+- `npm run e2e`: 35 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓

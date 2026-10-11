@@ -28,11 +28,18 @@ class FrameTransport {
     this.frame.setAttribute('aria-hidden', 'true');
     this.frame.tabIndex = -1;
     Object.assign(this.frame.style, { border: '0', width: '100%', height: '100%', display: 'block', background: 'transparent', pointerEvents: 'none', colorScheme: 'normal' });
+    this.pendingThumbs = new Map();
     this.onMessage = (e) => {
       const m = e.data;
       if (e.source !== this.frame.contentWindow || !m || m.tvsuite !== 'sandbox' || m.token !== this.token) return;
       if (m.type === 'hello') { this.ready = true; for (const q of this.queue.splice(0)) this._post(q); }
       else if (m.type === 'status') this.onStatus(m.status);
+      else if (m.type === 'thumb') {
+        const done = this.pendingThumbs.get(m.id);
+        this.pendingThumbs.delete(m.id);
+        if (!done) return;
+        if (m.blob instanceof Blob) createImageBitmap(m.blob).then(done, () => done(null)); else done(null);
+      }
     };
     window.addEventListener('message', this.onMessage);
     shadow.append(this.frame);
@@ -41,11 +48,20 @@ class FrameTransport {
   send(msg) {
     if (!this.ready) {
       // Keep only the latest message of each type while the frame loads.
-      this.queue = this.queue.filter((q) => q.type !== msg.type);
+      if (msg.type !== 'thumb') this.queue = this.queue.filter((q) => q.type !== msg.type);
       this.queue.push(msg);
     } else this._post(msg);
   }
-  destroy() { window.removeEventListener('message', this.onMessage); this.frame.remove(); }
+  thumbnail(skin, width, height) {
+    if (this.page !== 'sandbox.html') return Promise.resolve(null);
+    const id = Math.random().toString(36).slice(2);
+    return new Promise((resolve) => {
+      this.pendingThumbs.set(id, resolve);
+      this.send({ type: 'thumb', id, skin, width, height, _unique: id }); // queued until the sandbox is ready
+      setTimeout(() => { if (this.pendingThumbs.delete(id)) resolve(null); }, 20000);
+    });
+  }
+  destroy() { window.removeEventListener('message', this.onMessage); this.frame.remove(); for (const r of this.pendingThumbs.values()) r(null); }
 }
 
 // Transport to a renderer running directly in this page (TradingView Desktop / userscript / fallback).
@@ -68,6 +84,10 @@ class InlineTransport {
       case 'pause': h.setPaused(m.paused); break;
       default: break;
     }
+  }
+  async thumbnail(skin, width, height) {
+    const blob = await this.host.thumbnail(skin, width, height);
+    return blob ? createImageBitmap(blob).catch(() => null) : null;
   }
   destroy() { this.host.destroy(); this.box.remove(); }
 }
@@ -206,8 +226,10 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     return recordFor(ids[Math.floor(now / (Math.max(1, pl.minutes) * 60000)) % ids.length]);
   }
 
+  let previewSkin = null; // Studio "test on chart": temporary, never saved
   function baseSkin() {
     const cfg = s();
+    if (previewSkin) return previewSkin;
     const pinned = symbol && cfg.perSymbol?.[symbol];
     return pinned || (cfg.sessionThemes && sessionSkinFor(lastSession)) || playlistSkin() || cfg.active || null;
   }
@@ -322,6 +344,8 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     status: () => status,
     signals: () => tracker.signals(),
     symbol: () => symbol || adapter.readObservation?.()?.symbol || null,
+    thumbnail: (skin, width = 384, height = 216) => (transport?.thumbnail ? transport.thumbnail(skin, width, height) : Promise.resolve(null)),
+    preview: (skin) => { previewSkin = skin; lastApplied = null; pushAll(); },
     activeSession: () => lastSession,
     builtins,
   };
