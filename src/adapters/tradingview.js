@@ -105,7 +105,10 @@ export function genericAdapter(selector) {
 // customSites: [{ host, kind: 'tv-embed' | 'generic', selector? }]
 export function pickAdapter(customSites = []) {
   if (tradingview.matches()) return tradingview;
-  const site = customSites.find((s) => s.host === location.hostname);
+  // about:blank / srcdoc frames (common for embedded charting libraries) have no host of their own: use their parent's.
+  let host = location.hostname;
+  if (!host) { try { host = window.parent.location.hostname; } catch (_) { host = ''; } }
+  const site = customSites.find((s) => s.host === host);
   if (!site) return null;
   if (site.kind === 'generic' && site.selector) return genericAdapter(site.selector);
   return tradingviewEmbed;

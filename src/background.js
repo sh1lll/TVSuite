@@ -153,7 +153,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // Custom sites (TopstepX/ProjectX, brokers, any canvas dashboard): content scripts are registered
 // dynamically only for hosts the user explicitly granted.
-async function syncSites() {
+let syncChain = Promise.resolve();
+// Serialized: the popup, the options page and permissions.onAdded can all ask at once.
+const syncSites = () => (syncChain = syncChain.catch(() => {}).then(doSyncSites));
+async function doSyncSites() {
   const { settings } = await chrome.storage.local.get('settings');
   const sites = settings?.sites || [];
   const existing = await chrome.scripting.getRegisteredContentScripts();
@@ -165,10 +168,17 @@ async function syncSites() {
     if (await chrome.permissions.contains({ origins })) granted.push({ site, origins });
   }
   if (!granted.length) return;
-  await chrome.scripting.registerContentScripts(granted.flatMap(({ site, origins }, i) => [
-    { id: `tvsuite-site-${i}-main`, matches: origins, js: ['main-world.js'], runAt: 'document_start', world: 'MAIN', allFrames: true, persistAcrossSessions: true },
-    { id: `tvsuite-site-${i}`, matches: origins, js: ['content.js'], runAt: 'document_idle', allFrames: site.kind !== 'generic', persistAcrossSessions: true },
-  ]));
+  const scripts = (fallback) => granted.flatMap(({ site, origins }, i) => [
+    { id: `tvsuite-site-${i}-main`, matches: origins, js: ['main-world.js'], runAt: 'document_start', world: 'MAIN', allFrames: true, persistAcrossSessions: true, ...(fallback ? { matchOriginAsFallback: true } : {}) },
+    { id: `tvsuite-site-${i}`, matches: origins, js: ['content.js'], runAt: 'document_idle', allFrames: site.kind !== 'generic', persistAcrossSessions: true, ...(fallback && site.kind !== 'generic' ? { matchOriginAsFallback: true } : {}) },
+  ]);
+  // matchOriginAsFallback also injects into about:blank / srcdoc frames (charting libraries often build their iframe that way).
+  try { await chrome.scripting.registerContentScripts(scripts(true)); }
+  catch (_) {
+    const ids = granted.flatMap((_g, i) => [`tvsuite-site-${i}-main`, `tvsuite-site-${i}`]);
+    await chrome.scripting.unregisterContentScripts({ ids }).catch(() => {});
+    await chrome.scripting.registerContentScripts(scripts(false));
+  }
 }
 
 chrome.runtime.onInstalled.addListener(() => {

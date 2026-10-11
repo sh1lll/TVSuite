@@ -1113,6 +1113,29 @@ await check('settings page: every panel tab renders, and a change there reaches 
   await sp.close();
 });
 
+await check('embedded platforms: TVSuite starts inside srcdoc and same-host iframes of an enabled site', async () => {
+  const CHART = '<div class="chart-container"><div class="chart-markup-table"><canvas width="300" height="200"></canvas></div></div>';
+  await context.route('https://embed.test/**', (route) => {
+    const u = new URL(route.request().url());
+    const body = u.pathname === '/frame' ? `<!doctype html><body style="margin:0">${CHART}` : `<!doctype html><body><h1>Platform</h1><iframe id="a" srcdoc='${CHART}' style="width:400px;height:240px"></iframe><iframe id="b" src="/frame" style="width:400px;height:240px"></iframe>`;
+    return route.fulfill({ status: 200, contentType: 'text/html', body });
+  });
+  const helper = await context.newPage();
+  await helper.goto(`chrome-extension://${extensionId}/popup.html`);
+  await helper.evaluate(async () => {
+    const { settings } = await chrome.storage.local.get('settings');
+    settings.sites = [{ host: 'embed.test', kind: 'tv-embed' }]; delete settings._meta;
+    await chrome.storage.local.set({ settings });
+    await chrome.runtime.sendMessage({ type: 'sites.sync' });
+  });
+  await helper.close();
+  const ep = await context.newPage();
+  await ep.goto('https://embed.test/');
+  await waitFor(async () => (await Promise.all(ep.frames().filter((f) => f !== ep.mainFrame()).map((f) => f.evaluate(() => !!document.getElementById('tvsuite-panel-host')).catch(() => false)))).filter(Boolean).length === 2, { timeout: 30000, message: 'TVSuite in both iframes' });
+  assert.equal(await ep.evaluate(() => !!document.getElementById('tvsuite-panel-host')), false, 'not in the top page, which has no chart');
+  await ep.close();
+});
+
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));
   assert.deepEqual(relevant, []);

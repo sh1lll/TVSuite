@@ -74,7 +74,7 @@ Voice commands are opt-in (Alt+Shift+V, or type into the command box): "show NQ 
 - Trade journal: Alt+Shift+J captures a clean chart image with symbol, price, session, side, entry, stop, target, tags and notes. The journal page shows stats by session, symbol, tag, side and weekday, an equity curve in R, and CSV/JSON export.
 - Session clock in the top bar, a position-size calculator (stocks, futures, forex, crypto) and focus mode.
 
-It runs as a Chrome extension, inside TradingView Desktop (through `desktop/launcher.mjs`), or as a userscript. It also works on platforms that embed TradingView charts, like TopstepX/ProjectX and TradeSea. Open the platform, click the TVSuite icon in the toolbar and press Turn on here. Chrome asks for access to that site (and to the chart's iframe, if it lives on the same domain), then the page reloads with TVSuite running.
+It runs as a Chrome extension, inside TradingView Desktop (through `desktop/launcher.mjs`), or as a userscript. It also works on platforms that embed TradingView charts, like TopstepX/ProjectX and TradeSea. Open the platform, click the TVSuite icon in the toolbar and press Turn on here. Chrome asks for access to that site (and to the chart's iframe, if it lives on the same domain), then the page reloads with TVSuite running. If it still doesn't start, press Check this page in the popup and use the report it prints.
 
 ## Install
 
@@ -166,7 +166,7 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 The roadmap is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Research notes: [TradingView gaps](docs/research/tradingview-gaps.md), [ChartSkins teardown](docs/research/chartskins.md), [template-manager analysis](docs/research/template-manager.md), [platform bridge](docs/research/platform-bridge.md), [integration facts](docs/research/integrations.md) and [ideas](docs/IDEAS.md).
 
-There are 107 unit tests and 67 end-to-end checks. The end-to-end checks run the real extension in Chromium against the mock page, covering every feature above, the desktop bundle, and the launcher over CDP.
+There are 107 unit tests and 68 end-to-end checks. The end-to-end checks run the real extension in Chromium against the mock page, covering every feature above, the desktop bundle, and the launcher over CDP.
 
 Some things can only be checked on live TradingView or real hardware:
 

@@ -118,7 +118,9 @@ _Last updated: 2026-10-11._
 - ✅ The TVS button can be hidden completely (About → Launcher, or the popup). The hotkey and the popup's Open panel button still open the panel.
 - ✅ A full-page settings view (`settings.html`, opened from the popup's All settings) that renders the panel's tabs against stored settings. Edits are re-applied to a fresh copy before saving, so they don't overwrite newer changes made in a chart tab.
 - ✅ Embedded platforms: the popup couldn't read the tab's address without the activeTab permission, so the Turn on here button never appeared on TradeSea. Fixed, and the button now also asks for same-domain iframe hosts and reloads the page.
-- 🟡 TopstepX and TradeSea on the live sites: not checked (needs a login). If the chart sits in an iframe on a different domain, add that host under Accounts, sites & data.
+- ✅ Charts inside about:blank or srcdoc iframes (how charting libraries often embed) now start TVSuite: the frame uses its parent's host, and registered scripts use matchOriginAsFallback. Covered by an e2e check that fails without the fix.
+- ✅ The popup has a Check this page button that prints which frames TVSuite can see, whether a chart was found in each, and whether TVSuite is running, to paste into a bug report.
+- 🟡 TopstepX and TradeSea on the live sites: still not checked (needs a login). If the chart sits in an iframe on a different domain, Turn on here asks for hosts that look chart-related; anything else is added under Accounts, sites & data.
 - 🟡 The key guard assumes the page's shortcut handlers don't register before the content script at document start. Confirmed against the mock page only.
 - ❓ "Some parts at the bottom are themed but the lines aren't": the report was unclear. Needs a screenshot or a description of which strip and which lines (grid, axis borders, the time scale, the pane separator) look wrong. Not changed yet ⏳
 
@@ -130,7 +132,7 @@ _Last updated: 2026-10-11._
 
 ## Verification
 - `npm test`: 107 unit tests
-- `npm run e2e`: 67 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
+- `npm run e2e`: 68 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
 - Known flake: before the multi-tab fix, the co-watch check failed in 2 of 3 full runs (two panels re-saving settings). After the fix, the two-tab check failed once with no captured cause, then passed 2 of 2 full runs. It now reports what blocked the click if it happens again ⏳
 - `node test/e2e/perf.mjs`: per-skin cost table
 

@@ -56,7 +56,7 @@ export function testExtension() {
   const dir = mkdtempSync(path.join(tmpdir(), 'tvsuite-ext-'));
   cpSync(EXT, dir, { recursive: true });
   const mf = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
-  mf.host_permissions = [...new Set([...(mf.host_permissions || []), 'http://127.0.0.1/*'])];
+  mf.host_permissions = [...new Set([...(mf.host_permissions || []), 'http://127.0.0.1/*', 'https://embed.test/*'])];
   writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(mf, null, 2));
   return dir;
 }
