@@ -74,6 +74,7 @@ export const DEFAULT_SETTINGS = {
       auto: false,              // start when a trade is entered, stop after you're flat
       stopOnExit: true,
       postRollSec: 10,
+      preRollSec: 15,           // keep this many seconds before the entry (WebCodecs; not with mic narration)
       maxMin: 30,
       useOpenPnl: true,         // when Risk Guard reads open P&L from the screen, ≠ 0 means "in a trade"
       alsoOn: { tvAlert: false, priceAlert: false },

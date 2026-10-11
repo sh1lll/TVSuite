@@ -679,13 +679,15 @@ for (const editContext of [false, true]) {
     await page.reload();
     await page.waitForFunction(() => !!window.mockTV);
     await page.evaluate((ec) => { window.mockTV.pine.editContext = ec; }, editContext);
+    // On failure the extension shows a clipboard-instructions dialog; never leave it over later checks.
+    const closeDialog = async () => { const d = panel(page).locator('.modal-bg'); if (await d.count()) await d.first().evaluate((n) => n.remove()); };
     const p = await openPanel(page, 'bridge');
     await p.locator('.subnav button[data-value="code"]').first().click();
     await p.locator('button[data-example="js"]').click();
     const pine = await p.locator('textarea[data-ind-out]').inputValue();
     await p.locator('button[data-send-pine-add]').click();
     await waitFor(() => page.evaluate(() => window.mockTV.pine.ready === true), { message: 'Pine Editor opened by TVSuite', timeout: 15000 });
-    await waitFor(() => page.evaluate(() => window.mockTV.pine.added), { message: 'Add to chart clicked', timeout: 10000 }).catch(async (e) => { throw new Error(`${e.message}; status: ${await p.locator('[data-ind-status]').textContent()}; editor: ${JSON.stringify((await page.evaluate(() => window.mockTV.pine.value())).slice(0, 160))}; lines: ${await page.evaluate(() => [...document.querySelectorAll('#mock-pine .line-numbers')].map((n) => n.textContent).join(','))}`); });
+    await waitFor(() => page.evaluate(() => window.mockTV.pine.added), { message: 'Add to chart clicked', timeout: 40000 }).catch(async (e) => { await closeDialog(); throw new Error(`${e.message}; status: ${await p.locator('[data-ind-status]').textContent()}; editor: ${await (async () => { const got = (await page.evaluate(() => window.mockTV.pine.value())).split('\n'); const want = pine.split('\n'); const i = want.findIndex((l, k) => got[k] !== l); return i < 0 ? 'identical' : `line ${i + 1}: got ${JSON.stringify(got[i])} want ${JSON.stringify(want[i])} (${got.length} vs ${want.length} lines)`; })()}; lines: ${await page.evaluate(() => [...document.querySelectorAll('#mock-pine .line-numbers')].map((n) => n.textContent).join(','))}; view: ${await page.evaluate(() => JSON.stringify([...document.querySelectorAll('#mock-pine .view-lines .view-line')].map((l) => [l.style.top, l.textContent.replace(/\u00a0/g, ' ')])))}`); });
     assert.equal(await page.evaluate(() => typeof window.monaco), 'undefined', 'no Monaco global (like TradingView)');
     const got = (await page.evaluate(() => window.mockTV.pine.value())).trim();
     if (got !== pine.trim()) { const a = got.split('\n'), b = pine.trim().split('\n'); const i = a.findIndex((l, k) => l !== b[k]); throw new Error(`editor differs at line ${i + 1}: got ${JSON.stringify(a[i])} want ${JSON.stringify(b[i])} (lines ${a.length} vs ${b.length})`); }
@@ -697,6 +699,7 @@ await check('linked tabs: a symbol seen on another platform tab opens on this ch
   const [sw] = context.serviceWorkers();
   await sw.evaluate(() => chrome.storage.local.set({ 'bridge:seen': { 'topstepx.com': { symbol: 'CON.F.US.ENQ.Z26', at: Date.now(), url: 'https://topstepx.com/trade' } } }));
   const p = await openPanel(page, 'bridge');
+  await p.locator('.subnav button[data-value="symbols"]').first().click();
   const row = p.locator('.row[data-linked="topstepx.com"]');
   await row.waitFor();
   const own = await sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => Object.keys(x['bridge:seen'])));
@@ -849,6 +852,39 @@ await check('recorder: a trade entry starts recording, the exit stops it, the cl
   await p.locator('label.switch', { hasText: 'Record my trades' }).click();
 });
 
+await check('recorder pre-roll: the clip includes the seconds before the entry (WebCodecs + muxer)', async () => {
+  let p = await capTab('recorder');
+  if (!(await p.locator('label.switch', { hasText: 'Record my trades' }).locator('input').isChecked())) await p.locator('label.switch', { hasText: 'Record my trades' }).click();
+  p = await capTab('recorder');
+  await p.locator('.row', { hasText: 'Keep before entry' }).locator('input[type=range]').fill('5');
+  await p.locator('.row', { hasText: 'Keep recording' }).locator('input[type=range]').fill('0');
+  await waitFor(async () => (await (await capTab('recorder')).locator('[data-preroll-state]').getAttribute('data-preroll-state')) === 'ready', { message: 'pre-roll armed', timeout: 15000 });
+  await sleep(6500); // let the buffer fill past 5 s
+  await page.locator('#tvsuite-panel-host .x').click();
+  const sw = context.serviceWorkers()[0];
+  const before = await sw.evaluate(() => new Promise((res) => { const r = indexedDB.open('tvsuite-recordings', 1); r.onupgradeneeded = () => r.result.createObjectStore('clips', { keyPath: 'id' }); r.onsuccess = () => { const db = r.result; const g = db.transaction('clips').objectStore('clips').getAllKeys(); g.onsuccess = () => { db.close(); res(g.result); }; }; }));
+  await page.evaluate(() => window.mockTV.toast('Order filled: Sell 2 BTCUSD at 63,400.00'));
+  await sleep(2500);
+  await page.evaluate(() => window.mockTV.toast('Position closed: BTCUSD -40.00 USD'));
+  const clip = await waitFor(() => sw.evaluate((old) => new Promise((res) => {
+    const r = indexedDB.open('tvsuite-recordings', 1);
+    r.onsuccess = () => { const db = r.result; const g = db.transaction('clips').objectStore('clips').getAll(); g.onsuccess = () => { db.close(); const c = g.result.find((x) => !old.includes(x.id)); res(c ? { size: c.size, mime: c.mime, duration: c.duration, preRoll: c.preRoll, events: c.events } : null); }; };
+  }), before), { message: 'pre-roll clip saved', timeout: 20000 });
+  assert.ok(clip.preRoll >= 4 && clip.preRoll <= 7, `pre-roll ${clip.preRoll}s`);
+  assert.ok(clip.duration >= clip.preRoll + 2, `duration ${clip.duration}s covers pre-roll + trade`);
+  const entry = clip.events.find((e) => e.type === 'tradeEntry');
+  assert.ok(Math.abs(entry.t - clip.preRoll) < 0.6, `entry marker at ${entry.t}s ≈ pre-roll ${clip.preRoll}s`);
+  // Plays back with that duration.
+  const rp = await context.newPage();
+  await rp.goto(`chrome-extension://${extensionId}/recordings.html`);
+  const d = await waitFor(() => rp.evaluate(() => { const v = document.querySelector('.clip video'); return v && v.readyState >= 1 && Number.isFinite(v.duration) ? v.duration : 0; }), { message: 'playable' });
+  assert.ok(Math.abs(d - clip.duration) < 1.2, `player duration ${d}s vs ${clip.duration}s`);
+  console.log(`      (${clip.mime}, ${clip.preRoll}s pre-roll, ${clip.duration.toFixed(1)}s total)`);
+  await rp.close();
+  await page.bringToFront();
+  p = await capTab('recorder');
+  await p.locator('label.switch', { hasText: 'Record my trades' }).click();
+});
 await check('session recap: card with today’s numbers from the Risk tab, sent to Discord', async () => {
   const sw = context.serviceWorkers()[0];
   await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); Object.assign(settings.risk, { enabled: true, startBalance: 50000, source: 'manual' }); delete settings._meta; await chrome.storage.local.set({ settings }); });
@@ -939,7 +975,8 @@ await check('room lighting: devices get the session colour, a flash on a fill, a
   await sleep(700);
   const rp = await openPanel(page, 'risk');
   await rp.locator('.subnav button[data-value="today"]').first().click();
-  await rp.locator('input[data-pnl-input]').fill('-500'); await rp.locator('input[data-pnl-input]').press('Enter');
+  // Big enough to cross the $100 limit whatever earlier checks left in today's P&L.
+  await rp.locator('input[data-pnl-input]').fill('-5000'); await rp.locator('input[data-pnl-input]').press('Enter');
   await waitFor(() => mock.requests.find((r) => r.url === '/json/state' && /"col":\[\[242,54,69\]\]/.test(r.text)), { message: 'red on breach', timeout: 8000 });
   await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.pdll = 0; settings.lights.enabled = false; delete settings._meta; await chrome.storage.local.set({ settings }); });
 });

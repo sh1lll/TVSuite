@@ -1,6 +1,6 @@
 # Integration facts (researched 2026-10-11)
 
-H = official doc/source · M = several consistent secondary sources · UNCONFIRMED = not verified. Doc hosts were unreachable from the build container; facts come from search summaries citing official pages, GitHub source snippets, and the official Govee PDF.
+H = official doc/source · M = several consistent secondary sources · UNCONFIRMED = not verified. Most doc hosts couldn't be fetched directly, so facts come from search summaries citing official pages, GitHub source snippets, and the official Govee PDF.
 
 ## Cross-cutting
 - Extension **service worker with host permissions is exempt from CORS** (H). Content scripts fetch as the page origin → all device/webhook calls go through the background worker.

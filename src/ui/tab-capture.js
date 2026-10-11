@@ -82,6 +82,8 @@ export function captureTab(app) {
         toggle({ label: 'Record my trades', hint: 'Starts on a trade entry (pop-up, Alt+Shift+E or open P&L ≠ 0), stops after you’re flat', checked: c.auto, onChange: (v) => set((x) => { x.auto = v; }, true) }),
         c.auto ? [
           toggle({ label: 'Stop after the exit', checked: c.stopOnExit, onChange: (v) => set((x) => { x.stopOnExit = v; }) }),
+          slider({ label: 'Keep before entry', value: c.preRollSec, min: 0, max: 60, step: 5, fmt: (v) => (v ? `${v}s before` : 'off'), onInput: (v) => set((x) => { x.preRollSec = v; }) }),
+          el('div', { class: 'note', dataset: { prerollState: app.recorder.armed() ? 'ready' : 'off' } }, c.mic ? 'Pre-roll is off while microphone narration is on.' : app.recorder.armed() ? `Pre-roll ready — keeping the last ${app.recorder.armed().preRollSec}s (${app.recorder.armed().mime.includes('mp4') ? 'MP4' : 'WebM'}).` : app.recorder.armError() ? `Pre-roll unavailable: ${app.recorder.armError()}` : c.preRollSec ? 'Pre-roll starts in a moment…' : 'Pre-roll off.'),
           slider({ label: 'Keep recording', value: c.postRollSec, min: 0, max: 120, step: 5, fmt: (v) => `${v}s after exit`, onInput: (v) => set((x) => { x.postRollSec = v; }) }),
           toggle({ label: 'Use open P&L from Risk Guard', hint: 'When it reads open P&L from the screen: ≠ 0 means in a trade', checked: c.useOpenPnl, onChange: (v) => set((x) => { x.useOpenPnl = v; }) }),
           toggle({ label: 'Also record TradingView alerts', checked: c.alsoOn.tvAlert, onChange: (v) => set((x) => { x.alsoOn.tvAlert = v; }) }),
@@ -145,7 +147,7 @@ export function captureTab(app) {
     setChildren(body, view === 'card' ? card() : view === 'recorder' ? recorder() : view === 'mini' ? mini() : share());
     setChildren(wrap, nav, body);
   }
-  const unsubs = [bus.on('mini:state', () => { if (view === 'mini' && wrap.isConnected) render(); }), bus.on('recorder:state', () => { if (view === 'recorder' && wrap.isConnected) render(); }), bus.on('recorder:saved', () => { recList = null; if (view === 'recorder' && wrap.isConnected) render(); })];
+  const unsubs = [bus.on('recorder:armed', () => { if (view === 'recorder' && wrap.isConnected) render(); }), bus.on('mini:state', () => { if (view === 'mini' && wrap.isConnected) render(); }), bus.on('recorder:state', () => { if (view === 'recorder' && wrap.isConnected) render(); }), bus.on('recorder:saved', () => { recList = null; if (view === 'recorder' && wrap.isConnected) render(); })];
   const tick = setInterval(() => { if (view === 'recorder' && wrap.isConnected && app.recorder.recording()) render(); }, 1000);
   render();
   return { el: wrap, render, dispose: () => { unsubs.forEach((u) => u()); clearInterval(tick); } };

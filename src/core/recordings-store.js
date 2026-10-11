@@ -21,13 +21,13 @@ async function run(mode, fn) {
   });
 }
 
-const META = ['id', 'createdAt', 'name', 'mime', 'size', 'duration', 'symbol', 'reason', 'events'];
+const META = ['id', 'createdAt', 'name', 'mime', 'size', 'duration', 'symbol', 'reason', 'events', 'preRoll'];
 export const recordingsStore = {
   async put(blob, meta = {}, keep = 20) {
     if (!(blob instanceof Blob) || !blob.size) throw new Error('Empty recording');
     const id = `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const rec = { id, createdAt: Date.now(), name: String(meta.name || 'Recording').slice(0, 80), mime: blob.type || 'video/webm', size: blob.size,
-      duration: Number.isFinite(meta.duration) ? meta.duration : null, symbol: String(meta.symbol || '').slice(0, 40), reason: String(meta.reason || '').slice(0, 40),
+      duration: Number.isFinite(meta.duration) ? meta.duration : null, symbol: String(meta.symbol || '').slice(0, 40), reason: String(meta.reason || '').slice(0, 40), preRoll: Number.isFinite(meta.preRoll) ? Math.round(meta.preRoll * 10) / 10 : 0,
       events: Array.isArray(meta.events) ? meta.events.slice(0, 200).map((e) => ({ t: +e.t || 0, type: String(e.type).slice(0, 30) })) : [], blob };
     await run('readwrite', (s) => s.put(rec));
     const all = await this.list();

@@ -1,14 +1,14 @@
 # TVSuite roadmap
 
-Status legend: ✅ done & verified (unit/e2e) · 🟡 done, needs verification on real TradingView · 🔨 in progress · ⏳ planned · 🧪 needs research · ❓ needs owner decision
+Status legend: ✅ done & verified (unit/e2e) · 🟡 done, needs verification on real TradingView · 🔨 in progress · ⏳ planned · 🧪 needs research · ❓ open decision
 
-_Last updated: 2026-10-11 (session 1, round 4: risk guard, capture, mini windows, lights, voice, indicators, co-watch)._
+_Last updated: 2026-10-11._
 
 ## Phase 0 — Research ✅
 - ✅ TradingView feature-gap survey → `docs/research/tradingview-gaps.md`
 - ✅ ChartSkins teardown (web, desktop, TopstepX/ProjectX, 40-release timeline, quirks) → `docs/research/chartskins.md`
 - ✅ vngbh/tradingview-template-manager analysis (12 issues) → `docs/research/template-manager.md`
-- ✅ Assessment of the owner's ideas + adjacent brainstorm → `docs/IDEAS.md`
+- ✅ Original feature ideas assessed, plus an adjacent brainstorm → `docs/IDEAS.md`
 
 ## Phase 1 — Core platform ✅
 - ✅ Settings store (chrome.storage / localStorage) with defaults merging; key-order-independent echo detection
@@ -88,8 +88,9 @@ _Last updated: 2026-10-11 (session 1, round 4: risk guard, capture, mini windows
 - ✅ Screenshot cards (6 themes, 4 aspects, symbol/price/session/day P&L/trade P&L/R chips, watermark); Alt+Shift+S copies
 - ✅ Smart recorder: chart canvases → MP4 (Chrome 126+) or WebM, no screen-share prompt; starts on entry (pop-up, hotkey, or open P&L ≠ 0), stops N s after exit; overlays; mic narration; library page with entry/exit markers
 - ✅ Discord webhooks + Telegram bots from the background only; auto-share cards, journal, risk hits, recordings; size limits respected
-- ⏳ Pre-roll (keep the seconds before an entry) — needs segmented recording; deferred
-- ⏳ End-of-session recap card (trades, R, chart time) auto-posted
+- ✅ Pre-roll: while “Record my trades” is on, WebCodecs keeps encoding the last N s (keyframe each second) and the clip starts there; muxed with real timestamps to MP4 (H.264) or WebM (VP9/VP8); entry marker at the right moment (e2e: 5.3 s pre-roll, plays at full length). MediaRecorder fallback when narrating with the mic
+- 🟡 MP4 output needs a browser with an H.264 encoder (Chrome has one; the test Chromium produced WebM)
+- ✅ End-of-session recap card: day or session; trades, net, win rate, profit factor, drawdown, streaks, R, chart time, rules kept/broken; manual or automatic at session close / day reset (once across tabs); Discord/Telegram
 
 ## Phase 10 — Mini windows ✅ (🟡 throttling when the chart tab is hidden)
 - ✅ Mini chart (Document Picture-in-Picture, pop-up fallback): live chart mirror, price, tick line, session, day P&L, record/mute
@@ -104,7 +105,8 @@ _Last updated: 2026-10-11 (session 1, round 4: risk guard, capture, mini windows
 
 ## Phase 12 — Indicators in other languages ✅
 - ✅ Python / JavaScript / Java → Pine v6 translator for the indicator subset; line-numbered errors; AI translation for the rest; saved library
-- 🟡 "Paste into Pine Editor" (Monaco isn't a page global; uses focus + select-all + paste events) — copy/paste always works
+- ✅ Send to Pine Editor, verified against the real Monaco editor (0.57) in textarea and EditContext modes with the Monaco global removed: opens the editor, types line by line (fixing auto-indent), reads it back, optional Add to chart; clipboard + steps otherwise
+- 🟡 On tradingview.com itself: depends on its Pine Editor button and Monaco build; the read-back check means it never claims success it can't see
 - ⏳ Strategies (strategy.*), loops via `for` translation, a local preview that draws the indicator on TVSuite's own layer
 
 ## Phase 13 — Co-watch ✅ (🟡 across real networks)
@@ -118,25 +120,24 @@ _Last updated: 2026-10-11 (session 1, round 4: risk guard, capture, mini windows
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 104 unit tests
-- `npm run e2e`: 60 checks (the suite runs a test copy of the extension that may reach 127.0.0.1, for mock Discord/Telegram/light servers)
-- Known: before the multi-tab fix the co-watch check failed in 2 of 3 full runs (two panels re-saving settings). After the fix the new two-tab check failed once (cause not captured), then 2 of 2 full runs passed; it's now instrumented to report what blocked the click if it recurs ⏳ with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 107 unit tests
+- `npm run e2e`: 64 checks. They run the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP. The suite loads a test copy of the extension that may reach 127.0.0.1, so mock Discord, Telegram and light servers can stand in for the real ones, and it serves the real Monaco editor from node_modules for the Pine Editor checks.
+- Known flake: before the multi-tab fix, the co-watch check failed in 2 of 3 full runs (two panels re-saving settings). After the fix, the two-tab check failed once with no captured cause, then passed 2 of 2 full runs. It now reports what blocked the click if it happens again ⏳
 - `node test/e2e/perf.mjs`: per-skin cost table
 
-## Open items needing the owner ❓
-1. ~~GitHub push blocked~~ — resolved: the work is pushed (after a recorded demo, `npm run demo`).
-2. **Live verification on your machine**, which I can't do from the build container:
+## Not yet verified on live TradingView ❓
+1. The mock page can't stand in for these, so they need a real browser and account:
    - load `dist/extension` on a real TradingView chart and check **About → Diagnostics**: "Background clears" > 0 and "Legend found: yes";
    - try the Templates tab on a test account first;
    - try `node desktop/launcher.mjs doctor`, then `node desktop/launcher.mjs` with TradingView Desktop;
    - Sound: place a paper trade and check the entry sound fires; if not, copy the pop-up's text into Sound → Trade & alert detection;
    - Bridge: on TopstepX (added under Other sites), check the symbol appears under Bridge → Linked tabs, and that its contract id matches the ProjectX row;
-   - Risk Guard: set your PDLL/PDPT, then Rules → P&L source → Read from screen → pick your day P&L in TradingView's Account Manager (or TopstepX) and check Today shows it;
+   - Risk Guard: set a PDLL/PDPT, then Rules → P&L source → Read from screen → pick the day P&L in TradingView's Account Manager (or TopstepX) and check Today shows it;
    - Recorder: Capture → Recorder → Record my trades, place a paper trade, and check the clip in Recordings;
    - Mini chart: Alt+Shift+P, switch to another app, and see whether the chart keeps moving;
    - Lights / Discord / Telegram: add a device or webhook in Options and press Test;
    - Voice: Sound → Voice, press Alt+Shift+V and say "show NQ five minute".
-3. The gallery index URL assumes `main` on `sh1lll/TVSuite`; change `GALLERY_URL` in `src/background.js` if you host it elsewhere.
+2. The gallery index URL assumes `main` on `sh1lll/TVSuite`; change `GALLERY_URL` in `src/background.js` if it's hosted elsewhere.
 
 ## Decisions log
 - D1: Transparency by clearing the background fill at draw time, never by writing chart settings. This avoids ChartSkins' synced-layout leak (their v1.0.18) and snapshot breakage (v1.0.30/31).

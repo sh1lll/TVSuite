@@ -1,8 +1,8 @@
-# TVSuite ideas: the owner's list, assessed, plus adjacent ideas
+# TVSuite ideas
 
 Status: ✅ shipped in this repo · 🔨 partial · ⏳ next · 🧪 needs research · ❌ rejected (reason given)
 
-## A. Your ideas: assessment and status
+## A. Original ideas and where they stand
 
 | Idea | Status | How it's done / notes |
 |---|---|---|
@@ -73,7 +73,7 @@ Ranked by demand evidence vs effort. See `docs/research/tradingview-gaps.md`.
 
 Full list and status in `docs/research/platform-bridge.md`. Shipped: a symbol translator for 12 platforms, Open in…, right-click "Open in TradingView" on any site, linked tabs across platforms, a watchlist converter, and ProjectX root overrides. Next: trade-history CSV → chart markers, journal export to Tradervue/TradesViz, level export to NinjaTrader/Sierra/TOS, and Pine → ThinkScript/NinjaScript through the AI provider.
 
-## F. Round 4: your picks, built
+## F. Second wave of ideas
 
 | Idea | Status | Notes |
 |---|---|---|
@@ -90,8 +90,8 @@ Full list and status in `docs/research/platform-bridge.md`. Shipped: a symbol tr
 | **Voice commands** (opt-in, labelled) | ✅/🟡 | On-device when available |
 
 ### Next ideas in this lane
-- **Pre-roll recording** (segmented recorder, keep the 20 s before an entry). ⏳ M
-- **End-of-session recap card**: trades, R, chart time, rules followed, auto-sent to Discord/Telegram. ⏳ S
+- **Pre-roll recording** ✅ (WebCodecs ring buffer + muxer)
+- **End-of-session recap card** ✅
 - **Tilt guard**: N losses in a row → lights dim, calm cue, 60 s pause screen (Risk Guard has the plumbing). ⏳ S
 - **Pre-trade checklist** on Alt+Shift+E (your rules, saved with the trade). ⏳ S
 - **Local indicator preview**: run the translated indicator on TVSuite's own recorded prices and draw it on the skin layer. 🧪 M

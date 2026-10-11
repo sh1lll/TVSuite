@@ -26,7 +26,7 @@ async function render() {
       video,
       h('div', { class: 'meta' },
         h('b', {}, meta.name),
-        h('span', { class: 'note' }, `${new Date(meta.createdAt).toLocaleString()} · ${dur(meta.duration)} · ${mb(meta.size)} · ${meta.reason || ''}`),
+        h('span', { class: 'note' }, `${new Date(meta.createdAt).toLocaleString()} · ${dur(meta.duration)} · ${mb(meta.size)} · ${meta.reason || ''}${meta.preRoll ? ` · includes ${Math.round(meta.preRoll)}s before entry` : ''}`),
         meta.events?.length ? h('div', { class: 'ev' }, meta.events.map((e) => h('button', { onclick: () => { video.currentTime = Math.max(0, e.t - 1); video.play(); } }, `${dur(e.t)} ${e.type}`))) : null,
         h('div', { class: 'btns' },
           h('a', { href: url, download: meta.name, class: 'btn' }, 'Download'),
