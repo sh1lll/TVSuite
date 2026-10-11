@@ -12,12 +12,14 @@ export function createHud({ getSettings, bus }) {
   root.append(pill);
   shadow.append(root);
   pill.addEventListener('click', () => bus.emit('panel:open', 'sessions'));
-  let calm = 0, reactive = false;
+  let calm = 0, reactive = false, streaming = false;
+  bus.on('stream:change', (v) => { streaming = v; host.style.display = v ? 'none' : ''; if (!v) paint(); });
   const nextEventCached = createNextEventCache(3 * 1440);
   bus.on('skins:signals', (s) => { calm = s.calm; reactive = true; });
 
   function paint() {
     const cfg = getSettings();
+    if (streaming) return;
     host.style.display = cfg.sessions.hud ? '' : 'none';
     if (!cfg.sessions.hud) return;
     const now = new Date();

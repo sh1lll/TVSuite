@@ -2,6 +2,7 @@
 import { generateSkin, DEFAULT_AI } from './ai/providers.js';
 
 const AI_KEY = 'ai';
+const GALLERY_URL = 'https://raw.githubusercontent.com/sh1lll/TVSuite/main/gallery/index.json';
 
 async function aiConfig() {
   const { [AI_KEY]: cfg } = await chrome.storage.local.get(AI_KEY);
@@ -14,6 +15,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then((cfg) => generateSkin(cfg, msg.prompt))
       .then((skin) => sendResponse({ skin }), (err) => sendResponse({ error: err.message || String(err) }));
     return true; // async response
+  }
+  if (msg?.type === 'gallery.fetch') {
+    fetch(GALLERY_URL, { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d) => sendResponse({ skins: Array.isArray(d?.skins) ? d.skins.slice(0, 200) : [] }), (err) => sendResponse({ error: err.message }));
+    return true;
+  }
+  if (msg?.type === 'options.open') {
+    chrome.tabs.create({ url: chrome.runtime.getURL(`options.html${msg.hash ? `#${msg.hash}` : ''}`) });
+    sendResponse({ ok: true });
+    return false;
   }
   if (msg?.type === 'sites.sync') {
     syncSites().then(() => sendResponse({ ok: true }), (err) => sendResponse({ error: err.message }));

@@ -1,6 +1,7 @@
 // Options page: AI provider, custom sites, data export/import.
 import { DEFAULT_AI } from './ai/providers.js';
 import { loadSettings, saveSettings } from './core/settings.js';
+import { addMedia, listMedia, removeMedia, mediaSkin } from './core/media-store.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (id, text, kind = '') => { $(id).textContent = text; $(id).className = `note ${kind}`; };
@@ -63,6 +64,48 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     renderSites();
   };
   renderSites();
+
+  async function renderMedia() {
+    const items = await listMedia();
+    const s = await loadSettings();
+    $('mediaList').replaceChildren(...items.map((m) => {
+      const row = document.createElement('div'); row.className = 'site';
+      const label = document.createElement('span'); label.textContent = `${m.name} — ${m.type}, ${(m.size / 1048576).toFixed(1)} MB`;
+      const inLib = s.skins.library.some((x) => x.id === `media-${m.id}`);
+      const use = document.createElement('button'); use.textContent = 'Use as skin';
+      use.onclick = async () => {
+        const st = await loadSettings();
+        const skin = mediaSkin(m);
+        st.skins.library = [skin, ...st.skins.library.filter((x) => x.id !== skin.id)];
+        st.skins.active = skin; st.skins.enabled = true;
+        await saveSettings(st);
+        status('mediaStatus', `"${m.name}" is now your skin on open TradingView tabs.`, 'ok');
+        renderMedia();
+      };
+      const del = document.createElement('button'); del.textContent = 'Delete';
+      del.onclick = async () => {
+        await removeMedia(m.id);
+        const st = await loadSettings();
+        st.skins.library = st.skins.library.filter((x) => x.id !== `media-${m.id}`);
+        if (st.skins.active?.id === `media-${m.id}`) st.skins.active = { kind: 'builtin', base: 'aurora', id: 'aurora', name: 'Aurora' };
+        await saveSettings(st);
+        renderMedia();
+      };
+      row.append(label, inLib ? Object.assign(document.createElement('span'), { textContent: 'in library', className: 'note' }) : '', use, del);
+      return row;
+    }));
+    if (!items.length) $('mediaList').textContent = 'No media yet.';
+  }
+  $('mediaFile').onchange = async () => {
+    for (const f of $('mediaFile').files) {
+      try { await addMedia(f); status('mediaStatus', `Added ${f.name}.`, 'ok'); }
+      catch (err) { status('mediaStatus', `${f.name}: ${err.message}`, 'err'); }
+    }
+    $('mediaFile').value = '';
+    renderMedia();
+  };
+  renderMedia();
+  if (location.hash === '#media') document.getElementById('media').scrollIntoView();
 
   $('exportAll').onclick = async () => {
     const all = await chrome.storage.local.get(null);

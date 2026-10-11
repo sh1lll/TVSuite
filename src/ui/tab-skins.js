@@ -2,6 +2,7 @@
 import { el, downloadJson, pickFile, setChildren } from '../core/dom.js';
 import { section, row, slider, toggle, select, button, chip, modal, prompt, toast, copyText } from './kit.js';
 import { BUILTIN_CANVAS, BUILTIN_SHADERS } from '../modules/skins/builtins.js';
+import { GALLERY } from '../../gallery/skins.mjs';
 import { validateSkin, decodeSkin, skinShareLink, encodeSkin, hasCode, slugify } from '../modules/skins/packs.js';
 
 const SWATCH = {
@@ -109,6 +110,28 @@ export function skinsTab(app) {
     return section(el('span', {}, 'Skin parameters ', button('Reset', () => { update((st) => { delete st.skins.params[id]; }); render(); }, 'sm')), ...controls);
   }
 
+  // Community gallery: bundled seed skins (reviewed in this repo) plus, in the extension, the latest
+  // index from GitHub. Remote entries go through the same trust prompt as shared links.
+  async function browseGallery() {
+    const bundled = GALLERY.map((g) => validateSkin(g).skin).filter(Boolean);
+    let remote = [];
+    if (app.fetchGallery) { try { remote = (await app.fetchGallery()).filter((r) => !bundled.some((b) => b.id === r.id)); } catch (_) { /* offline: bundled only */ } }
+    const list = el('div', { class: 'list', style: { maxHeight: '320px' } });
+    const close = () => bg.remove();
+    const add = async (skin, trusted) => { close(); if (trusted) addToLibrary(skin); else importSkin(JSON.stringify(skin)); };
+    for (const [skin, trusted] of [...bundled.map((x) => [x, true]), ...remote.map((x) => [x, false])]) {
+      const have = s().library.some((x) => x.id === skin.id);
+      list.append(el('div', { class: 'row', style: { padding: '4px 10px' } },
+        el('div', { class: 'grow' }, el('b', {}, skin.name), ' ', chip(skin.kind), trusted ? null : chip('community', 'warn'), el('div', { class: 'note' }, skin.description || '')),
+        button(have ? 'Use' : 'Add', () => add(skin, trusted), 'sm primary')));
+    }
+    const bg = el('div', { class: 'modal-bg' }, el('div', { class: 'modal' }, el('h3', {}, 'Skin gallery'),
+      el('p', {}, 'Skins shared as JSON. Add yours with a pull request to gallery/ in the TVSuite repo.'), list,
+      el('div', { class: 'btns', style: { justifyContent: 'flex-end' } }, button('Close', close))));
+    bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
+    root.append(bg);
+  }
+
   async function generate() {
     const promptText = await prompt(root, { title: 'Generate a skin', text: 'Describe a scene, e.g. "rainy neon street", "slow ocean at dusk", "calm green matrix". Your connected model writes a small canvas program that runs only in the sandbox.', multiline: true, placeholder: 'rainy neon street' });
     if (!promptText || !promptText.trim()) return;
@@ -141,8 +164,10 @@ export function skinsTab(app) {
         cfg.library.length ? el('div', { class: 'grid' }, cfg.library.map((sk) => card(sk, { kind: sk.kind, swatch: 'linear-gradient(90deg,#2962ff,#089981)', tags: sk.tags, menu: () => libraryMenu(sk) }))) : el('div', { class: 'note' }, 'Generate one, or import a shared link / JSON.'),
         el('div', { class: 'btns' },
           button('✨ Generate…', generate, 'primary'),
+          button('Gallery', browseGallery),
           button('Import link/JSON', async () => { const t = await prompt(root, { title: 'Import skin', text: 'Paste a TVSKIN1 link or skin JSON.', multiline: true }); if (t) importSkin(t); }),
           button('Import file', async () => { const f = await pickFile('.json,application/json'); if (f) importSkin(f.text); }),
+          app.openOptions ? button('🎞 My media…', () => app.openOptions('media'), '', { title: 'Use your own video, GIF or image (stored locally)' }) : null,
           button('Share current', async () => {
             const a = cfg.active; if (!a) return;
             const rec = a.kind === 'builtin' ? { ...a, params: { ...(a.params || {}), ...(cfg.params[a.id || a.base] || {}) } } : a;
@@ -170,6 +195,16 @@ export function skinsTab(app) {
           select({ label: 'Day starts', value: cfg.dayStartTz, options: [['UTC', 'UTC midnight'], ['America/New_York', 'New York midnight'], ['Europe/London', 'London midnight'], ['Asia/Tokyo', 'Tokyo midnight']], onChange: (v) => update((st) => { st.skins.dayStartTz = v; }) }),
           signalsEl,
         ] : null),
+      (() => {
+        const sym = skins.symbol();
+        if (!sym) return null;
+        const pinned = cfg.perSymbol?.[sym];
+        return section(`This symbol — ${sym}`,
+          el('div', { class: 'note' }, pinned ? `Always uses "${pinned.name || pinned.id}" on ${sym}.` : `Pin a skin to ${sym}; it overrides session themes.`),
+          el('div', { class: 'btns' },
+            button(`Use current skin on ${sym}`, () => { update((st) => { st.skins.perSymbol[sym] = st.skins.active; }); render(); }, 'sm'),
+            pinned ? button('Unpin', () => { update((st) => { delete st.skins.perSymbol[sym]; }); render(); }, 'sm') : null));
+      })(),
       section('Session themes',
         toggle({ label: 'Switch skins at Tokyo / London / New York opens (clock only)', checked: cfg.sessionThemes, onChange: (v) => update((st) => { st.skins.sessionThemes = v; }) }),
         el('div', { class: 'note' }, 'Pick each session\'s skin in the Sessions tab.')),

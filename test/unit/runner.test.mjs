@@ -22,11 +22,11 @@ function fakeCanvas(w = 320, h = 180) {
 
 globalThis.OffscreenCanvas ??= class { constructor(w, h) { this.width = w; this.height = h; } getContext() { return fakeCanvas(this.width, this.height).canvas.getContext(); } };
 
-function runFrames(prog, frames, resizeAt = -1) {
+function runFrames(prog, frames, resizeAt = -1, params = {}) {
   const { canvas, calls } = fakeCanvas();
   let cb = null, now = 0;
   const errors = [];
-  const r = new SkinRunner({ canvas, kind: 'canvas', program: prog, params: {}, fps: 60, raf: (fn) => { cb = fn; return 1; }, caf: () => {}, now: () => now, onError: (m) => errors.push(m) });
+  const r = new SkinRunner({ canvas, kind: 'canvas', program: prog, params, fps: 60, raf: (fn) => { cb = fn; return 1; }, caf: () => {}, now: () => now, onError: (m) => errors.push(m) });
   for (let i = 0; i < frames; i++) {
     if (i === resizeAt) r.resize(640, 360, 1);
     now += 17;
@@ -37,8 +37,7 @@ function runFrames(prog, frames, resizeAt = -1) {
 
 for (const b of BUILTIN_CANVAS) {
   test(`builtin "${b.id}" runs 30 frames, survives a resize, keeps setup state`, () => {
-    const prog = builtinProgram({ ...b });
-    const { errors, calls, r } = runFrames(prog.replace(/api\.p\./g, 'api.p.'), 30, 10);
+    const { errors, calls, r } = runFrames(builtinProgram(b), 30, 10, b.params);
     assert.deepEqual(errors, []);
     assert.ok(calls.fill > 0, 'painted something');
     assert.ok(r.frame >= 29);
@@ -57,4 +56,17 @@ test('fps cap skips frames', () => {
   r.prog.draw = () => { draws++; };
   for (let i = 0; i < 60; i++) { now += 1000 / 60; const f = cb; f(now); }
   assert.ok(draws >= 14 && draws <= 16, `~15 draws in 1s at 15fps, got ${draws}`);
+});
+
+test('gallery seed skins validate, compile and run frames', async () => {
+  const { GALLERY } = await import('../../gallery/skins.mjs');
+  const { validateSkin } = await import('../../src/modules/skins/packs.js');
+  for (const g of GALLERY) {
+    const { ok, errors, skin } = validateSkin(g);
+    assert.ok(ok, `${g.name}: ${errors.join()}`);
+    if (skin.kind !== 'canvas') continue;
+    const { errors: runErrors, calls } = runFrames(skin.code, 10, 4, skin.params);
+    assert.deepEqual(runErrors, [], g.name);
+    assert.ok(calls.fill > 10, `${g.name} painted (${calls.fill})`);
+  }
 });

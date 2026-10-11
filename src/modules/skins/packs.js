@@ -64,7 +64,7 @@ export function validateSkin(input) {
       else skin.glsl = input.glsl;
       break;
     case 'media':
-      if (typeof input.url !== 'string' || !/^(https:\/\/|data:image\/|data:video\/)/.test(input.url)) errors.push('media skins need an https: or data:image/video URL');
+      if (typeof input.url !== 'string' || !/^(https:\/\/|data:image\/|data:video\/|local:[a-z0-9]{4,40}$)/.test(input.url)) errors.push('media skins need an https:, data:image/video or local: URL');
       else skin.url = input.url;
       skin.fit = ['cover', 'contain', 'fill'].includes(input.fit) ? input.fit : 'cover';
       break;

@@ -327,6 +327,69 @@ await check('options page renders the AI provider form with the default model', 
   await opt.close();
 });
 
+await check('my media: an uploaded image becomes a skin via the extension media frame', async () => {
+  const { png } = await import('../../scripts/icons.mjs');
+  const file = path.join(OUT, 'magenta.png');
+  writeFileSync(file, png(64, () => [255, 0, 255, 255]));
+  const opt = await context.newPage();
+  await opt.goto(`chrome-extension://${extensionId}/options.html#media`);
+  await opt.locator('#mediaFile').setInputFiles(file);
+  await opt.getByRole('button', { name: 'Use as skin' }).first().click();
+  await opt.waitForFunction(() => /now your skin/.test(document.getElementById('mediaStatus').textContent));
+  await opt.close();
+  const d = await waitFor(async () => { const x = await layerData(page); return x?.state === 'running' && x?.skin?.startsWith('media-') && x; }, { timeout: 10000, message: 'media skin running' });
+  assert.ok(d);
+  await sleep(1200);
+  const st = await regionStats(page, CLIP);
+  assert.ok(st.r > 100 && st.b > 100 && st.g < 60, `expected magenta under candles, got ${JSON.stringify(st)}`);
+  await page.screenshot({ path: path.join(OUT, '09-media-skin.png') });
+  // Switching back to a code skin swaps to the sandbox frame again.
+  const p = await openPanel(page, 'skins');
+  await p.locator('.card[data-skin="plexus"]').click();
+  await waitFor(async () => { const x = await layerData(page); return x?.skin === 'plexus' && x?.state === 'running'; }, { message: 'back to sandbox skin' });
+  await p.locator('.x').click();
+});
+
+await check('gallery adds a community skin that renders within budget', async () => {
+  const p = await openPanel(page, 'skins');
+  await p.getByRole('button', { name: 'Gallery' }).click();
+  await p.locator('.modal .row', { hasText: 'Topo Lines' }).getByRole('button').click();
+  const d = await waitFor(async () => { const x = await layerData(page); return x?.skin === 'topo-lines' && x?.state === 'running' && x; }, { timeout: 10000, message: 'gallery skin running' });
+  assert.ok(d);
+  await sleep(2500);
+  const st = await page.evaluate(() => document.getElementById('tvsuite-skin-layer').dataset);
+  await p.locator('.x').click();
+  await page.screenshot({ path: path.join(OUT, '10-gallery-topo.png') });
+  // fps here is bounded by the GPU-less headless rasterizer; the skin's own JS cost is what we control.
+  assert.ok(+st.frameMs < 8, `JS frame cost within budget (${st.frameMs} ms)`);
+});
+
+await check('per-symbol skin overrides the default and follows symbol changes', async () => {
+  const p = await openPanel(page, 'skins');
+  await p.locator('.card[data-skin="embers"]').click();
+  await waitFor(async () => (await layerData(page))?.skin === 'embers', { message: 'embers active' });
+  await p.getByRole('button', { name: /Use current skin on BTCUSD/ }).click();
+  await p.locator('.card[data-skin="aurora"]').click();
+  await waitFor(async () => (await layerData(page))?.skin === 'embers', { message: 'BTCUSD stays pinned to embers' });
+  await page.evaluate(() => window.mockTV.setSymbol('ETHUSD'));
+  await waitFor(async () => (await layerData(page))?.skin === 'aurora', { timeout: 6000, message: 'ETHUSD uses the default skin' });
+  await page.evaluate(() => window.mockTV.setSymbol('BTCUSD'));
+  await waitFor(async () => (await layerData(page))?.skin === 'embers', { timeout: 6000, message: 'back to pinned skin' });
+  await p.getByRole('button', { name: 'Unpin' }).click();
+  await waitFor(async () => (await layerData(page))?.skin === 'aurora', { message: 'unpinned' });
+  await p.locator('.x').click();
+});
+
+await check('stream mode (Alt+Shift+H) hides all TVSuite UI but keeps the skin', async () => {
+  await page.mouse.click(700, 450);
+  await page.keyboard.press('Alt+Shift+H');
+  assert.equal(await page.evaluate(() => document.getElementById('tvsuite-panel-host').style.display), 'none');
+  assert.equal(await page.evaluate(() => document.getElementById('tvsuite-hud-host').style.display), 'none');
+  assert.equal((await layerData(page)).display, 'block');
+  await page.keyboard.press('Alt+Shift+H');
+  assert.equal(await page.evaluate(() => document.getElementById('tvsuite-panel-host').style.display), '');
+});
+
 await check('no uncaught TVSuite errors on the page', async () => {
   const relevant = pageErrors.filter((e) => !/boom|Hang|stopped responding/.test(e));
   assert.deepEqual(relevant, []);

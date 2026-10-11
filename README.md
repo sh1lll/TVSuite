@@ -95,7 +95,7 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [ideas](docs/IDEAS.md).
 
-**Verified:** 52 unit tests and 24 e2e checks. The e2e checks run the real extension against the mock page. They cover:
+**Verified:** 55 unit tests and 28 e2e checks. The e2e checks run the real extension against the mock page. They cover:
 - the skin layer and transparency;
 - every built-in skin;
 - overlay mode, hotkeys, reactive and calm mode;

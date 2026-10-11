@@ -30,7 +30,7 @@ function queryMain(q) {
   });
 }
 
-export async function startTVSuite({ ai = null, forceInline = false } = {}) {
+export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, forceInline = false } = {}) {
   if (window.__TVSUITE__) return window.__TVSUITE__;
   let settings = await loadSettings();
   const adapter = pickAdapter(settings.sites);
@@ -43,7 +43,7 @@ export async function startTVSuite({ ai = null, forceInline = false } = {}) {
   const persist = debounce(() => { const json = stableStringify(settings); ownWrites.push(json); if (ownWrites.length > 20) ownWrites.shift(); saveSettings(settings); }, 250);
 
   const app = {
-    version: VERSION, host: HOST, adapter, bus, ai, queryMain,
+    version: VERSION, host: HOST, adapter, bus, ai, openOptions, fetchGallery, queryMain,
     getSettings: () => settings,
     update(fn, { silent = false } = {}) {
       fn(settings);
@@ -70,12 +70,21 @@ export async function startTVSuite({ ai = null, forceInline = false } = {}) {
     panel.rerender();
   });
 
+  // Stream / screenshot mode: hide every piece of TVSuite UI (the skin itself stays).
+  let streaming = false;
+  function toggleStream() {
+    streaming = !streaming;
+    for (const id of ['tvsuite-panel-host', 'tvsuite-hud-host']) { const n = document.getElementById(id); if (n) n.style.display = streaming ? 'none' : ''; }
+    bus.emit('stream:change', streaming);
+  }
+
   window.addEventListener('keydown', (e) => {
     if (isTypingTarget(e)) return;
     const ui = settings.ui;
     if (matchHotkey(e, ui.panelHotkey)) { e.preventDefault(); e.stopPropagation(); panel.toggle(); }
     else if (matchHotkey(e, ui.skinHotkey)) { e.preventDefault(); e.stopPropagation(); app.update((s) => { s.skins.enabled = !s.skins.enabled; }); }
     else if (matchHotkey(e, settings.tools.focusHotkey)) { e.preventDefault(); e.stopPropagation(); app.focus.toggle(); }
+    else if (matchHotkey(e, ui.streamHotkey)) { e.preventDefault(); e.stopPropagation(); toggleStream(); }
   }, true);
 
   // Shared skin links: https://www.tradingview.com/chart/#tvskin=TVSKIN1.xxxx (the fragment never reaches a server).

@@ -1,5 +1,14 @@
 // Extension content script entry (isolated world).
 import { startTVSuite } from './app.js';
+import { validateSkin } from './modules/skins/packs.js';
+
+const openOptions = (hash) => chrome.runtime.sendMessage({ type: 'options.open', hash });
+
+// Remote gallery entries are re-validated in the UI and always pass through the trust prompt.
+const fetchGallery = () => new Promise((resolve, reject) => chrome.runtime.sendMessage({ type: 'gallery.fetch' }, (res) => {
+  if (chrome.runtime.lastError || !res || res.error) return reject(new Error(res?.error || chrome.runtime.lastError?.message || 'gallery unavailable'));
+  resolve(res.skins.map((x) => validateSkin(x).skin).filter(Boolean));
+}));
 
 const ai = {
   generate: (prompt) => new Promise((resolve, reject) => {
@@ -17,5 +26,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
-const boot = () => startTVSuite({ ai }).catch((err) => console.error('[TVSuite] failed to start', err));
+const boot = () => startTVSuite({ ai, openOptions, fetchGallery }).catch((err) => console.error('[TVSuite] failed to start', err));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();

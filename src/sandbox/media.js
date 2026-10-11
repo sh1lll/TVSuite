@@ -1,0 +1,46 @@
+// Runs in extension/media.html (extension origin, framed under the chart). Plays one media skin:
+// a local file from the extension's IndexedDB ("local:<id>") or an https URL. No code from skins runs here.
+import { getMedia } from '../core/media-store.js';
+
+const token = new URLSearchParams(location.hash.slice(1)).get('token');
+const root = document.getElementById('root');
+let el = null, objectUrl = null, paused = false, currentUrl = null;
+
+function reply(msg) { parent.postMessage({ tvsuite: 'sandbox', token, ...msg }, '*'); }
+
+async function show(skin) {
+  if (!skin || skin.kind !== 'media') return;
+  if (skin.url === currentUrl && el) { el.style.objectFit = skin.fit || 'cover'; return; }
+  currentUrl = skin.url;
+  let src = skin.url, type = '';
+  try {
+    if (skin.url.startsWith('local:')) {
+      const rec = await getMedia(skin.url.slice(6));
+      if (!rec) throw new Error('This media file is no longer in TVSuite (it may have been removed in Options).');
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(rec.blob);
+      src = objectUrl; type = rec.type;
+    }
+    const isVideo = type.startsWith('video/') || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(skin.url) || skin.url.startsWith('data:video/');
+    const next = document.createElement(isVideo ? 'video' : 'img');
+    Object.assign(next.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', objectFit: skin.fit || 'cover', opacity: '0', transition: 'opacity .7s' });
+    if (isVideo) Object.assign(next, { muted: true, loop: true, autoplay: !paused, playsInline: true });
+    next.addEventListener(isVideo ? 'loadeddata' : 'load', () => { next.style.opacity = '1'; reply({ type: 'status', status: { state: 'running', skin: skin.id, mode: 'media' } }); }, { once: true });
+    next.addEventListener('error', () => reply({ type: 'status', status: { state: 'error', skin: skin.id, message: isVideo ? 'This video can\'t be played here (codec not supported by this browser?)' : 'Image failed to load' } }), { once: true });
+    next.src = src;
+    root.append(next);
+    const old = el; el = next;
+    if (old) setTimeout(() => old.remove(), 800);
+    reply({ type: 'status', status: { state: 'starting', skin: skin.id, mode: 'media' } });
+  } catch (err) {
+    reply({ type: 'status', status: { state: 'error', skin: skin.id, message: err.message } });
+  }
+}
+
+window.addEventListener('message', (e) => {
+  const m = e.data;
+  if (e.source !== parent || !m || m.tvsuite !== 'layer' || !token || m.token !== token) return;
+  if (m.type === 'skin') show(m.skin);
+  else if (m.type === 'pause') { paused = !!m.paused; if (el?.tagName === 'VIDEO') (paused ? el.pause() : el.play().catch(() => {})); }
+});
+reply({ type: 'hello' });

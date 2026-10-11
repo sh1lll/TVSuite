@@ -16,13 +16,14 @@ function randomToken() {
 
 // Transport to a renderer living in the extension's sandboxed iframe.
 class FrameTransport {
-  constructor(shadow, onStatus) {
+  constructor(shadow, onStatus, page = 'sandbox.html') {
+    this.page = page;
     this.token = randomToken();
     this.queue = [];
     this.ready = false;
     this.onStatus = onStatus;
     this.frame = document.createElement('iframe');
-    this.frame.src = `${resourceUrl('sandbox.html')}#token=${this.token}`;
+    this.frame.src = `${resourceUrl(page)}#token=${this.token}`;
     this.frame.setAttribute('allowtransparency', 'true');
     this.frame.setAttribute('aria-hidden', 'true');
     this.frame.tabIndex = -1;
@@ -88,6 +89,7 @@ export function createSkinsModule(ctx) {
     if (layer) { layer.dataset.state = status.state || ''; if (st.skin) layer.dataset.skin = st.skin; }
     if (layer) { if (st.state === 'error') layer.dataset.error = String(st.message || '').slice(0, 200); else if (st.state === 'running') delete layer.dataset.error; }
     if (layer && status.fps != null) layer.dataset.fps = String(status.fps);
+    if (layer && status.frameMs != null) layer.dataset.frameMs = String(status.frameMs);
     bus.emit('skins:status', status);
   }
 
@@ -148,7 +150,7 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     layerStyle();
     const preferFrame = IS_EXTENSION && !ctx.forceInline;
     if (preferFrame) {
-      transport = new FrameTransport(shadow, setStatus);
+      transport = new FrameTransport(shadow, setStatus, wantedPage(currentSkin()));
       // If the sandbox frame never says hello (blocked frame, CSP), fall back to an in-page renderer.
       const t = transport;
       setTimeout(() => { if (transport === t && !t.ready) { console.warn('[TVSuite] sandbox frame unavailable, using in-page renderer'); switchToInline(); } }, 4000);
@@ -177,18 +179,32 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     layer = null; shadow = null;
   }
 
+  let symbol = null, tick = 0;
+
   function currentSkin() {
     const cfg = s();
-    const skin = (cfg.sessionThemes && sessionSkin) ? sessionSkin : cfg.active;
+    const pinned = symbol && cfg.perSymbol?.[symbol];
+    const skin = pinned || ((cfg.sessionThemes && sessionSkin) ? sessionSkin : cfg.active);
     if (!skin) return null;
     const id = skin.id || skin.base;
     const overrides = cfg.params?.[id];
     return overrides ? { ...skin, params: { ...(skin.params || {}), ...overrides } } : skin;
   }
 
+  // Local media files live in extension storage, which only the extension-origin media frame can read.
+  function wantedPage(skin) { return skin?.kind === 'media' && skin.url?.startsWith('local:') ? 'media.html' : 'sandbox.html'; }
+
   function pushAll() {
     if (!transport) return;
     const cfg = s();
+    if (transport instanceof FrameTransport && cfg.enabled) {
+      const page = wantedPage(currentSkin());
+      if (page !== transport.page) {
+        transport.destroy();
+        transport = new FrameTransport(shadow, setStatus, page);
+        lastApplied = null; sent = {};
+      }
+    }
     // Only send what changed: a scale message resizes (and re-seeds) the running skin.
     if (sent.fps !== cfg.fps) { sent.fps = cfg.fps; transport.send({ type: 'fps', fps: cfg.fps }); }
     if (sent.scale !== cfg.scale) { sent.scale = cfg.scale; transport.send({ type: 'scale', scale: cfg.scale }); }
@@ -202,8 +218,16 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
   function signalTick() {
     const cfg = s();
     if (!cfg.enabled || !transport) return;
-    if (cfg.reactive.enabled) {
-      const obs = adapter.readObservation?.();
+    const reactive = cfg.reactive.enabled;
+    const wantSymbol = Object.keys(cfg.perSymbol || {}).length > 0 && (tick++ % 4 === 0);
+    if (!reactive && !wantSymbol) return;
+    const obs = adapter.readObservation?.();
+    if (obs?.symbol && obs.symbol !== symbol) {
+      symbol = obs.symbol;
+      bus.emit('skins:symbol', symbol);
+      if (cfg.perSymbol?.[symbol] || lastApplied) pushAll();
+    }
+    if (reactive) {
       const now = Date.now();
       if (obs) tracker.update({ ...obs, t: now, dayKey: zonedParts(new Date(now), cfg.dayStartTz || 'UTC').dateKey });
       else tracker.tick(now);
@@ -267,6 +291,7 @@ html[data-tvsuite-mode] [data-tvsuite-layer-host] { isolation: isolate; }
     start, stop, update,
     status: () => status,
     signals: () => tracker.signals(),
+    symbol: () => symbol || adapter.readObservation?.()?.symbol || null,
     activeSession: () => lastSession,
     builtins,
   };

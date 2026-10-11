@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS = {
     reactive: structuredClone(DEFAULT_REACTIVE),
     dayStartTz: 'UTC',      // when "distance from the daily open" resets
     sessionThemes: false,
+    perSymbol: {},          // { [symbol]: skin record } — wins over session themes and the default skin
   },
   sessions: {
     list: structuredClone(DEFAULT_SESSIONS),
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS = {
   ui: {
     panelHotkey: 'Alt+Shift+T',
     skinHotkey: 'Alt+Shift+K',
+    streamHotkey: 'Alt+Shift+H', // hide all TVSuite UI (clean screenshots / streams)
     fab: true,
     panelOpen: false,
     tab: 'skins',
