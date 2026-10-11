@@ -363,7 +363,7 @@ console.log('\nSessions & tools');
 await check('sessions tab shows the clock and HUD; position-size calculator computes', async () => {
   let p = await openPanel(page, 'sessions');
   assert.ok(await p.getByText('New York', { exact: true }).count() >= 1);
-  assert.match(await page.locator('#tvsuite-hud-host .hud').textContent(), /(opens|closes) in/);
+  assert.match(await page.locator('#tvsuite-hud-host .hud:not([data-sound-flash])').textContent(), /(opens|closes) in/);
   p = await openPanel(page, 'tools');
   const inputs = p.locator('input[type=number]');
   await inputs.nth(0).fill('25000'); await inputs.nth(1).fill('1'); await inputs.nth(2).fill('100'); await inputs.nth(3).fill('98');
@@ -409,6 +409,7 @@ await check('options page renders the AI provider form with the default model', 
   assert.equal(await opt.locator('#model').inputValue(), 'claude-opus-5-5');
   await opt.locator('#testAi').click();
   await opt.waitForFunction(() => /API key/.test(document.getElementById('aiStatus').textContent));
+  assert.equal(await opt.locator('#notifyOn').isChecked(), false, 'notifications off until the user grants the optional permission');
   await opt.screenshot({ path: path.join(OUT, '06-options.png'), fullPage: true });
   await opt.close();
 });
@@ -560,6 +561,7 @@ await check('TradingView order toast is detected as a trade entry, then an exit'
   let n = +(await audio()).played;
   await page.evaluate(() => window.mockTV.toast('Order filled: Buy 1 BTCUSD at 63,512.00'));
   await waitFor(async () => { const a = await audio(); return +a.played > n && a.last === 'tradeEntry'; }, { message: 'entry sound' });
+  assert.match(await page.locator('#tvsuite-hud-host [data-sound-flash]').textContent(), /Trade entered/, 'visual flash shows what played');
   n = +(await audio()).played;
   await page.evaluate(() => window.mockTV.toast('Position closed: BTCUSD +120.00 USD'));
   await waitFor(async () => { const a = await audio(); return +a.played > n && a.last === 'tradeExit'; }, { message: 'exit sound' });
@@ -670,7 +672,7 @@ await context.close();
 
 console.log('\nDesktop / userscript bundle (no extension)');
 await check('inject bundle runs in-page (desktop mode) with worker rendering', async () => {
-  const browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] });
+  const browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--autoplay-policy=no-user-gesture-required'] });
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 860 } });
   await routeTradingView(ctx, makeBackend());
   await ctx.addInitScript({ content: readFileSync(path.join(ROOT, 'dist/tvsuite-inject.js'), 'utf8') });
@@ -683,6 +685,15 @@ await check('inject bundle runs in-page (desktop mode) with worker rendering', a
   await waitFor(() => pg.evaluate(() => (window.__tvsuiteClears || 0) > 5), { message: 'clears in desktop mode' });
   assert.equal(await pg.evaluate(() => window.__TVSUITE__.host), 'desktop');
   await pg.screenshot({ path: path.join(OUT, '07-desktop-inject.png') });
+  // Sound in desktop mode: the in-page engine (no extension frame) plays synth events.
+  const dp = panel(pg);
+  await dp.locator('.fab').click();
+  await dp.locator('.tab[data-tab="sound"]').click();
+  await dp.locator('input[data-sound-power]').check();
+  await waitFor(() => pg.evaluate(() => document.getElementById('tvsuite-audio-host')?.dataset.state === 'on'), { message: 'inline audio on' });
+  await dp.locator('button[data-test="tvAlert"]').click();
+  await waitFor(() => pg.evaluate(() => +document.getElementById('tvsuite-audio-host').dataset.played > 0), { message: 'inline sound played' });
+  assert.equal(await pg.evaluate(() => document.getElementById('tvsuite-audio-host').dataset.error), '');
   assert.deepEqual(errs, []);
   await browser.close();
 });

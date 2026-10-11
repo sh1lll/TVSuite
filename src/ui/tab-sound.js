@@ -63,6 +63,7 @@ export function soundTab(app) {
   function eventsSection(cfg) {
     const groups = [...new Set(EVENTS.map((e) => e.group))];
     return section('Event sounds',
+      toggle({ label: 'Show what played', hint: 'A brief “♪ Trade entered” chip at the top of the chart', checked: cfg.flash !== false, onChange: (v) => update((st) => { st.sound.flash = v; }) }),
       toggle({ label: 'Voice announcements', hint: 'Speaks events like “NQ1! crossed 19850” with your system voice', checked: cfg.voice.enabled, onChange: (v) => { update((st) => { st.sound.voice.enabled = v; }); render(); } }),
       cfg.voice.enabled ? voiceControls(cfg) : null,
       groups.map((g) => [
@@ -160,9 +161,15 @@ export function soundTab(app) {
       area('entryWords', 'Trade entered when a pop-up says'), area('exitWords', 'Trade closed when a pop-up says'), area('alertWords', 'Alert fired when a pop-up says'));
   }
 
+  function notifySection(cfg) {
+    return section('Desktop notifications',
+      el('div', { class: 'note' }, cfg.notify ? 'On — events also show a system notification while this tab is in the background.' : 'Get a system notification for these events while the chart tab is in the background.'),
+      app.openOptions ? el('div', { class: 'btns' }, button(cfg.notify ? 'Change in Options' : 'Turn on in Options', () => app.openOptions('notify'), 'sm')) : null);
+  }
+
   function render() {
     const cfg = c();
-    setChildren(wrap, master(cfg), cfg.enabled ? [ambientSection(cfg), eventsSection(cfg), alertsSection(cfg), librarySection(cfg), detectionSection(cfg)] : null);
+    setChildren(wrap, master(cfg), cfg.enabled ? [ambientSection(cfg), eventsSection(cfg), alertsSection(cfg), librarySection(cfg), notifySection(cfg), detectionSection(cfg)] : null);
     paintStatus(sound.stats());
   }
   function paintStatus(st) {

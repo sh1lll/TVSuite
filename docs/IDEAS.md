@@ -63,7 +63,7 @@ Ranked by demand evidence vs effort. See `docs/research/tradingview-gaps.md`.
 | **Sonification**: a soft pitch drone that follows price relative to the daily range, so you can hear a trend while looking elsewhere | ⏳ S | Uses the existing signal tracker |
 | **Tape ticks**: a click per N contracts traded (crypto public trades or chart volume) | 🧪 M | Crypto WebSocket only, opt-in |
 | **Tilt guard**: after N losing exits in a row (from toasts or the journal), play a calm cue and dim the chart for 60 s | ⏳ S | Warns only; never blocks orders |
-| **Desktop notifications** mirroring sound events when the tab is in the background | ⏳ S | `notifications` permission, opt-in |
+| **Desktop notifications** mirroring sound events when the tab is in the background | 🟡 | Optional `notifications` permission, turned on in Options. Not verifiable headless. |
 | **Pomodoro / break reminders** tied to session clock ("NY lunch: step away") | ⏳ S | |
 | **Haptics** on supported devices (gamepad rumble / phone companion) | 🧪 | Gimmick, but fun for streams |
 | **Per-symbol sound packs** (a different entry sound per instrument) | ⏳ S | Same model as per-symbol skins |

@@ -18,6 +18,8 @@ const journal = {
   open: () => chrome.runtime.sendMessage({ type: 'journal.open' }),
 };
 
+const notify = (n) => { try { chrome.runtime.sendMessage({ type: 'notify', ...n }).catch(() => {}); } catch (_) { /* extension reloaded */ } };
+
 const ai = {
   generate: (prompt) => new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({ type: 'ai.generate', prompt }, (res) => {
@@ -34,5 +36,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
-const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal }).catch((err) => console.error('[TVSuite] failed to start', err));
+const boot = () => startTVSuite({ ai, openOptions, fetchGallery, journal, notify }).catch((err) => console.error('[TVSuite] failed to start', err));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();

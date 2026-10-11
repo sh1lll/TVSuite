@@ -64,6 +64,22 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     await chrome.runtime.sendMessage({ type: 'sites.sync' });
     status('siteStatus', `Added ${host}. Reload that site's tab.`, 'ok');
     renderSites();
+
+  // Desktop notifications: optional permission, requested only when switched on.
+  const notifyState = async () => {
+    const s = await loadSettings();
+    const granted = await chrome.permissions.contains({ permissions: ['notifications'] });
+    $('notifyOn').checked = !!s.sound.notify && granted;
+  };
+  $('notifyOn').onchange = async () => {
+    const on = $('notifyOn').checked;
+    if (on && !(await chrome.permissions.request({ permissions: ['notifications'] }))) { $('notifyOn').checked = false; return status('notifyStatus', 'Permission not granted', 'err'); }
+    const s = await loadSettings();
+    s.sound.notify = on;
+    await saveSettings(s);
+    status('notifyStatus', on ? 'On. Sound events also notify while the chart tab is hidden (Sound must be on).' : 'Off.', 'ok');
+  };
+  notifyState();
   };
   renderSites();
 
@@ -107,7 +123,7 @@ async function loadAi() { const { ai } = await chrome.storage.local.get('ai'); r
     renderMedia();
   };
   renderMedia();
-  if (location.hash === '#media') document.getElementById('media').scrollIntoView();
+  if (['#media', '#notify'].includes(location.hash)) document.getElementById(location.hash.slice(1)).scrollIntoView();
 
   $('exportAll').onclick = async () => {
     const all = await chrome.storage.local.get(null);

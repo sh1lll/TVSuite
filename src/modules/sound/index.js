@@ -101,6 +101,11 @@ export function createSoundModule(ctx) {
       const text = fill(EVENT_BY_ID[type]?.voice, { symbol: vars.symbol || adapter.readObservation?.()?.symbol || '', ...vars });
       if (text) setTimeout(() => out?.send({ type: 'speak', text, rate: c.voice.rate, voice: c.voice.name }), e.sound?.kind === 'none' ? 0 : 450);
     }
+    if (c.notify && ctx.notify && document.visibilityState === 'hidden') {
+      const meta = EVENT_BY_ID[type];
+      const body = fill(meta?.voice, { symbol: vars.symbol || adapter.readObservation?.()?.symbol || '', ...vars }) || meta?.name || type;
+      ctx.notify({ title: `TVSuite · ${meta?.name || type}`, body, tag: type });
+    }
     bus.emit('sound:fired', { type, vars });
     return true;
   }

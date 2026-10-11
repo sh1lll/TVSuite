@@ -18,6 +18,8 @@ export const EVENTS = [
 const S = (id) => ({ kind: 'synth', id });
 export const DEFAULT_SOUND = {
   enabled: false,
+  notify: false,
+  flash: true,                 // show a brief "♪ event" chip at the top of the chart               // also show a desktop notification while the tab is hidden (optional permission)
   volume: 0.7,
   ambient: { source: null, volume: 0.3 },
   voice: { enabled: false, rate: 1.05, name: '' },

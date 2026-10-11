@@ -2,6 +2,9 @@
 import { el, setChildren } from '../core/dom.js';
 import { CSS } from './kit.js';
 import { activeSession, createNextEventCache, formatCountdown } from '../modules/sessions/sessions.js';
+import { EVENTS } from '../modules/sound/events.js';
+
+const EVENT_NAMES = Object.fromEntries(EVENTS.map((e) => [e.id, e.name]));
 
 export function createHud({ getSettings, bus }) {
   const host = el('div', { id: 'tvsuite-hud-host' });
@@ -9,7 +12,17 @@ export function createHud({ getSettings, bus }) {
   shadow.append(el('style', {}, CSS));
   const root = el('div', { class: 'root' });
   const pill = el('div', { class: 'hud', title: 'TVSuite session clock — click to open the panel' });
-  root.append(pill);
+  // Sound flash: a brief "♪ Trade entered" chip so you can see what fired (muted, or checking detection).
+  const flash = el('div', { class: 'hud', role: 'status', dataset: { soundFlash: '1' }, style: { position: 'fixed', top: '44px', left: '50%', transform: 'translateX(-50%)', display: 'none', pointerEvents: 'none', borderColor: 'rgba(91,140,255,.6)' } });
+  root.append(pill, flash);
+  let flashTimer = null;
+  bus.on('sound:fired', ({ type, vars = {} }) => {
+    if (streaming || getSettings().sound.flash === false) return;
+    setChildren(flash, el('span', {}, `♪ ${EVENT_NAMES[type] || type}${vars.level != null ? ` · ${vars.level}` : vars.session ? ` · ${vars.session}` : ''}`));
+    flash.style.display = '';
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { flash.style.display = 'none'; }, 2400);
+  });
   shadow.append(root);
   pill.addEventListener('click', () => bus.emit('panel:open', 'sessions'));
   let calm = 0, reactive = false, streaming = false;
@@ -20,7 +33,8 @@ export function createHud({ getSettings, bus }) {
   function paint() {
     const cfg = getSettings();
     if (streaming) return;
-    host.style.display = cfg.sessions.hud ? '' : 'none';
+    host.style.display = '';
+    pill.style.display = cfg.sessions.hud ? '' : 'none';
     if (!cfg.sessions.hud) return;
     const now = new Date();
     const list = cfg.sessions.list;

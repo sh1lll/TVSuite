@@ -14,7 +14,7 @@ const size = { width: 1280, height: 760 };
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), 'tvsuite-demo-')), {
   executablePath: CHROME, headless: true, viewport: size,
   recordVideo: { dir: OUT, size },
-  args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--enable-unsafe-swiftshader', '--use-angle=swiftshader'],
+  args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--autoplay-policy=no-user-gesture-required'],
 });
 let [sw] = context.serviceWorkers();
 if (!sw) sw = await context.waitForEvent('serviceworker');
@@ -93,6 +93,9 @@ await sub('studio');
 await p.locator('.seg.subnav').nth(1).locator('button[data-value="code"]').click();
 await caption('Or write your own canvas/GLSL skin — it runs in a sandboxed worker, never in the page', 3000);
 await shot('studio-code');
+await p.locator('.seg.subnav').nth(1).locator('button[data-value="media"]').click();
+await caption('Or use your own image, GIF or video (MP4, WebM, MOV…) — upload it or paste a Giphy/Imgur/Dropbox/Drive link', 3200);
+await shot('studio-media');
 // 5 — look + smart
 await sub('look');
 await caption('Look: under-candles or overlay, opacity, dim, blur, frame rate, resolution', 2600);
@@ -123,7 +126,41 @@ await caption('Restore asks first — conflicts saved as "name (restored)", a sa
 await shot('restore-confirm');
 await p.getByRole('button', { name: /Write \d+ items/ }).click();
 await sleep(1600);
-// 8 — sessions + tools
+// 8 — sound
+await openTab('sound');
+await p.locator('input[data-sound-power]').check();
+await caption('NEW · Sound: ambient trading beds, event sounds, voice — all local', 2600);
+await p.locator('button[data-ambient="gen:rain"]').click();
+await caption('Ambient bed: rain (also ocean, noise, lo-fi, drone, or your own loop) — dips when an event plays', 3000);
+await shot('sound-tab');
+await p.locator('.body').evaluate((b) => { b.scrollTop = 520; });
+await caption('A sound per event: trade entered/closed, TradingView alerts, price levels, sessions… built-in, your file or a link', 3400);
+await shot('sound-events');
+await closePanel();
+await page.evaluate(() => window.mockTV.toast('Order filled: Buy 1 BTCUSD at 63,512.00'));
+await caption('TradingView says "Order filled" → TVSuite plays your entry sound (cash register). It never touches orders.', 900);
+await shot('sound-order-toast');
+await sleep(2500);
+const played = await page.evaluate(() => document.getElementById('tvsuite-audio-host').dataset);
+await caption(`Sounds played so far: ${played.played} · last: ${played.last} · Alt+Shift+E/X manual · Alt+Shift+M mute`, 2800);
+await openTab('sound');
+await p.locator('button[data-ambient="none"]').click();
+// 9 — bridge
+await openTab('bridge');
+await p.locator('input[data-bridge-input]').fill('ES 12-26');
+await caption('NEW · Platform Bridge: one symbol, every platform — NinjaTrader → TradingView, Tradovate, TopstepX, thinkorswim, Sierra…', 3800);
+await shot('bridge-symbols');
+await p.locator('textarea[data-wl-in]').fill('###FUTURES,CME_MINI:ESZ2026,CME_MINI:NQZ2026,###TECH,NASDAQ:AAPL,NASDAQ:MSFT,###CRYPTO,BINANCE:BTCUSDT');
+await p.locator('.body').evaluate((b) => { b.scrollTop = 900; });
+await caption('Watchlist converter: a TradingView export (with sections) → NinjaTrader, thinkorswim, Tradovate, CSV… and back', 3600);
+await shot('bridge-watchlist');
+const [sw0] = context.serviceWorkers();
+await sw0.evaluate(() => chrome.storage.local.set({ 'bridge:seen': { 'topstepx.com': { symbol: 'CON.F.US.ENQ.Z26', at: Date.now(), url: 'https://topstepx.com/trade' } } }));
+await p.locator('.body').evaluate((b) => { b.scrollTop = 420; });
+await caption('Linked tabs: your TopstepX tab is on NQ Dec 26 → "Open here" jumps this TradingView chart to it', 3600);
+await shot('bridge-linked');
+await caption('Plus: select a ticker on any website → right-click → Open in TradingView', 2800);
+// 10 — sessions + tools
 await openTab('sessions');
 await caption('Session clock: Tokyo / London / New York, DST-aware — each can switch to its own skin', 3000);
 await shot('sessions');
@@ -133,7 +170,7 @@ await nums.nth(0).fill('25000'); await nums.nth(1).fill('1'); await nums.nth(2).
 await caption('Position-size calculator: stocks, futures (point value), forex lots, crypto', 3000);
 await shot('position-size');
 await closePanel();
-// 9 — journal
+// 11 — journal
 await page.mouse.click(640, 380);
 await page.keyboard.press('Alt+Shift+J');
 await p.locator('.modal-bg[data-journal] .modal').waitFor();
@@ -152,7 +189,7 @@ await sleep(1500);
 await j.screenshot({ path: path.join(OUT, `${String(++still).padStart(2, '0')}-journal-page.png`) });
 await j.close();
 await page.bringToFront();
-await caption('TVSuite — live skins, templates, sessions, journal, tools. Local-only, open source.', 3000);
+await caption('TVSuite — skins, your media, sound, platform bridge, templates, sessions, journal, tools. Local-only, open source.', 3200);
 await shot('end');
 
 const video = page.video();

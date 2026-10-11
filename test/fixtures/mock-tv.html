@@ -100,6 +100,7 @@
     price() { return last.c; },
     toast(text) {                                             // a notification like TradingView's order/alert toasts
       const t = document.createElement('div'); t.className = 'toast-mock';
+      Object.assign(t.style, { position: 'fixed', right: '24px', bottom: '90px', background: '#1e222d', color: '#d1d4dc', border: '1px solid #2a2e39', borderLeft: '4px solid #089981', borderRadius: '6px', padding: '12px 16px', font: '14px -apple-system, Segoe UI, sans-serif', zIndex: 50, boxShadow: '0 8px 24px rgba(0,0,0,.4)' });
       document.body.append(t); setTimeout(() => { t.textContent = text; }, 30); setTimeout(() => t.remove(), 4000);
     },
     setSymbol(sym) {

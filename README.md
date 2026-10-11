@@ -11,6 +11,18 @@ TVSuite is one open-source, local-only suite for TradingView:
   - You can **generate new skins from a sentence** with any model you connect.
   - **Skin Studio**: remix any built-in with your own colours and motion, or write your own canvas/GLSL skin. Starter custom skins are included.
   - Skins can be **shared as links**.
+  - **Your own media as a skin**: upload an image, GIF or video (MP4, WebM, MOV, PNG, JPG, WebP, AVIF, SVG) or paste a link (Giphy, Imgur, Dropbox, Google Drive and GitHub links are converted to direct files).
+- **Sound.** Event sounds for trade entered/closed and TradingView alerts (detected from TradingView's own pop-ups, or by hotkey), local price-level alerts that don't use TradingView alert slots, daily-open crosses, big candles, bar closes and session opens/closes. Includes:
+  - 15 built-in effects, or your own audio files or links;
+  - ambient trading beds (rain, ocean, noise, lo-fi, drone, or your own loop) that duck under event sounds;
+  - spoken announcements ("NQ crossed 21,000");
+  - optional desktop notifications.
+- **Platform Bridge.**
+  - Translate any symbol between TradingView, NinjaTrader, Tradovate, ProjectX/TopstepX, thinkorswim, Sierra Chart, Rithmic, IBKR, MetaTrader, Yahoo, Binance and Coinbase.
+  - Convert watchlists between those formats.
+  - Open the current symbol on other sites.
+  - **Linked tabs**: TradingView jumps to what TopstepX or your broker tab shows.
+  - Right-click any ticker on any web page → **Open in TradingView**.
 - **Template manager.** Backup, snapshot history, diff vs live, and conflict-aware restore of drawing templates and chart themes, plus a factory reset that snapshots first. It reads and writes the same backup files as victornpb/tradingview-backup and vngbh/tradingview-template-manager.
 - **Trade journal.** Alt+Shift+J captures a clean chart image with symbol, price, session, side, entry, stop, target, tags and notes. A local journal page shows stats by session, symbol, tag, side and weekday, plus an equity curve in R and CSV/JSON export.
 - **Session clock HUD, position-size calculator** (stocks / futures / forex / crypto) and **focus mode**.
@@ -47,6 +59,8 @@ npm run build            # → dist/extension, dist/tvsuite-inject.js, dist/tvsu
 | Alt+Shift+F | Focus mode (hide TradingView toolbars) |
 | Alt+Shift+J | Capture the chart to the journal |
 | Alt+Shift+H | Hide all TVSuite UI (screenshots, streams) |
+| Alt+Shift+E / X | Sound: trade entered / closed (when TVSuite can't see your fills) |
+| Alt+Shift+M | Sound: mute / unmute |
 
 Hotkeys can be changed in **About**.
 
@@ -57,8 +71,10 @@ Hotkeys can be changed in **About**.
   - adjust per-skin parameters;
   - turn on **React to the chart** (opt-in) and **adaptive calm mode**;
   - generate, import or share skins.
+- **Sound tab:** turn Sound on, pick an ambient bed, choose a sound (and voice) per event, add price alerts, upload your own sounds or paste links, and edit the words that identify TradingView's order/alert pop-ups.
+- **Bridge tab:** symbol translator with copy buttons and Open in…, linked tabs, watchlist converter, ProjectX contract-root overrides.
 - **Templates tab:** Fetch, Snapshot, Export, Import, Compare with live, Restore (overwrite / skip / rename), Snapshots list, Factory reset.
-- **Options page:** AI provider and key (Anthropic, or any OpenAI-compatible endpoint including local Ollama), other sites, and data export.
+- **Options page:** AI provider and key (Anthropic, or any OpenAI-compatible endpoint including local Ollama), desktop notifications, other sites, and data export.
 
 ### Make your own skin
 
@@ -98,22 +114,29 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 ## Status
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [ideas](docs/IDEAS.md).
+See [`docs/ROADMAP.md`](docs/ROADMAP.md). Research: [TradingView gaps](docs/research/tradingview-gaps.md) · [ChartSkins teardown](docs/research/chartskins.md) · [template-manager analysis](docs/research/template-manager.md) · [platform bridge](docs/research/platform-bridge.md) · [ideas](docs/IDEAS.md).
 
-**Verified:** 61 unit tests and 35 e2e checks. The e2e checks run the real extension against the mock page. They cover:
+**Verified:** 77 unit tests and 46 e2e checks. The e2e checks run the real extension against the mock page. They cover:
 - the skin layer and transparency;
 - every built-in skin;
 - overlay mode, hotkeys, reactive and calm mode;
 - share links, the sandbox escape probe and the watchdog;
 - template fetch, export, snapshot, diff, restore and reset;
 - the popup and options page;
+- media skins (upload and link);
+- sound: every effect and ambient bed renders non-silent, order-toast detection, price alerts, hotkeys and mute, ambient beds, your own uploaded sound, and the in-page engine in desktop mode;
+- bridge translation, watchlist conversion, and linked tabs jumping the chart;
 - the desktop bundle, and the launcher over CDP.
 
 **Not yet verified on live TradingView** (it can't be reached from the build environment):
 - DOM selectors;
 - that production TradingView paints its background with a full-canvas `fillRect`;
 - the template endpoints, which come from two working public scripts;
-- real TradingView Desktop installs on Windows and macOS.
+- real TradingView Desktop installs on Windows and macOS;
+- the wording of TradingView's real order-fill and alert pop-ups (the keywords are editable);
+- sound autoplay inside a real TradingView tab after you first click the page;
+- desktop notifications (headless Chromium can't grant the permission);
+- ProjectX contract roots other than ENQ (NQ) and MNQ.
 
 ## License
 

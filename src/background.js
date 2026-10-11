@@ -40,6 +40,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return false;
   }
+  if (msg?.type === 'notify') {
+    showNotification(msg, sender.tab).then(() => sendResponse({ ok: true }), (err) => sendResponse({ error: err.message }));
+    return true;
+  }
   if (msg?.type === 'sites.sync') {
     syncSites().then(() => sendResponse({ ok: true }), (err) => sendResponse({ error: err.message }));
     return true;
@@ -84,3 +88,20 @@ chrome.contextMenus?.onClicked.addListener(async (info) => {
   chrome.tabs.create({ url: `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(sym)}` });
 });
 chrome.permissions.onAdded.addListener(() => { syncSites().catch(() => {}); });
+
+// Desktop notifications (optional permission). Clicking one focuses the chart tab that sent it.
+async function showNotification({ title, body, tag }, tab) {
+  if (!chrome.notifications || !(await chrome.permissions.contains({ permissions: ['notifications'] }))) return;
+  const id = `tvs|${tab?.id ?? ''}|${tab?.windowId ?? ''}|${tag || ''}|${Date.now()}`;
+  await chrome.notifications.create(id, { type: 'basic', iconUrl: chrome.runtime.getURL('icons/128.png'), title: String(title || 'TVSuite').slice(0, 80), message: String(body || '').slice(0, 200), priority: 1 });
+}
+function onNotificationClick(id) {
+  const [, tabId, windowId] = id.split('|');
+  if (tabId) chrome.tabs.update(+tabId, { active: true }).catch(() => {});
+  if (windowId) chrome.windows.update(+windowId, { focused: true }).catch(() => {});
+  chrome.notifications.clear(id);
+}
+// The listener only exists once the permission is granted, so register it whenever possible.
+const hookNotifications = () => { if (chrome.notifications && !chrome.notifications.onClicked.hasListener(onNotificationClick)) chrome.notifications.onClicked.addListener(onNotificationClick); };
+hookNotifications();
+chrome.permissions.onAdded.addListener(hookNotifications);

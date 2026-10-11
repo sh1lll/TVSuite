@@ -2,7 +2,7 @@
 
 Status legend: ✅ done & verified (unit/e2e) · 🟡 done, needs verification on real TradingView · 🔨 in progress · ⏳ planned · 🧪 needs research · ❓ needs owner decision
 
-_Last updated: 2026-10-11 (session 1)._
+_Last updated: 2026-10-11 (session 1, round 3: media, sound, bridge)._
 
 ## Phase 0 — Research ✅
 - ✅ TradingView feature-gap survey → `docs/research/tradingview-gaps.md`
@@ -57,7 +57,24 @@ _Last updated: 2026-10-11 (session 1)._
 - ✅ Focus mode
 - ✅ Trade journal: Alt+Shift+J chart capture (own canvases, clean background) + context → local journal page (stats by session/symbol/tag/side/weekday, equity curve in R, CSV/JSON export, formula-safe CSV) (gaps F1/F2)
 - ⏳ Hotkey remapper, visibility presets, spacebar fix (gaps A1–A3) — needs live DOM work
-- ⏳ Custom alert sounds (gap C4) · ⏳ layout search/tags (E1) · ⏳ UI theme packs for TradingView chrome (K1)
+- ✅ Custom alert sounds (gap C4) — see Phase 6 · ⏳ layout search/tags (E1) · ⏳ UI theme packs for TradingView chrome (K1)
+
+## Phase 6 — Sound ✅ (🟡 on live TradingView)
+- ✅ Synth engine: 15 effects, 6 generated ambient beds, ducking, own files (IndexedDB) and links; verified non-silent by offline render (e2e)
+- ✅ Events: trade entered/closed + TradingView alerts (toast keywords, editable) or hotkeys; local price alerts (once/every time, per symbol); daily-open cross; big candle; bar close; session open/close/1 min before; calm; journal capture
+- ✅ Voice announcements (system voices, rate, per-event); mute hotkey
+- ✅ Extension audio frame (autoplay delegated) and in-page engine for desktop/userscript (both e2e)
+- 🟡 Desktop notifications (optional permission, options page); not verifiable headless
+- 🟡 Real TradingView toast wording; real-tab autoplay after first click
+- ⏳ Sonification, tilt guard, per-symbol sound packs, shareable sound packs (see IDEAS §D)
+
+## Phase 7 — Platform Bridge ✅
+- ✅ Symbol translator, 12 platforms, round-trip tested; quarterly front-month estimate
+- ✅ Watchlist converter (TradingView sections, CSV, line lists in/out; skipped report; formula-safe CSV)
+- ✅ Open in… links; right-click "Open in TradingView" on any site (contextMenus)
+- ✅ Linked tabs across platforms (e2e: a TopstepX symbol jumps this chart)
+- 🟡 ProjectX roots: ENQ and MNQ confirmed from published ids; EP (ES), MES and the rest unconfirmed → overridable
+- ⏳ Trade-history CSV → chart markers, journal export to Tradervue/TradesViz, levels export, Pine → ThinkScript/NinjaScript (see `docs/research/platform-bridge.md`)
 
 ## Phase 5 — Desktop ✅ (🟡 on real installs)
 - ✅ `desktop/launcher.mjs`: `attach | launch | doctor`, loopback-only, chart-URL and CDP-method allow-lists, `Page.enable` + persistent injection across reloads (verified e2e against Chromium with a debug port)
@@ -66,8 +83,8 @@ _Last updated: 2026-10-11 (session 1)._
 - ⏳ Optional tray app / auto-attach on login (deliberately not built yet, because of the security trade-off)
 
 ## Verification
-- `npm test`: 61 unit tests
-- `npm run e2e`: 35 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
+- `npm test`: 77 unit tests
+- `npm run e2e`: 46 checks with the real extension in Chromium against the mock TradingView page on the real origin, plus the desktop bundle and the launcher over CDP
 - `node test/e2e/perf.mjs`: per-skin cost table
 
 ## Open items needing the owner ❓
@@ -75,7 +92,9 @@ _Last updated: 2026-10-11 (session 1)._
 2. **Live verification on your machine**, which I can't do from the build container:
    - load `dist/extension` on a real TradingView chart and check **About → Diagnostics**: "Background clears" > 0 and "Legend found: yes";
    - try the Templates tab on a test account first;
-   - try `node desktop/launcher.mjs doctor`, then `node desktop/launcher.mjs` with TradingView Desktop.
+   - try `node desktop/launcher.mjs doctor`, then `node desktop/launcher.mjs` with TradingView Desktop;
+   - Sound: place a paper trade and check the entry sound fires; if not, copy the pop-up's text into Sound → Trade & alert detection;
+   - Bridge: on TopstepX (added under Other sites), check the symbol appears under Bridge → Linked tabs, and that its contract id matches the ProjectX row.
 3. The gallery index URL assumes `main` on `sh1lll/TVSuite`; change `GALLERY_URL` in `src/background.js` if you host it elsewhere.
 
 ## Decisions log
@@ -85,4 +104,8 @@ _Last updated: 2026-10-11 (session 1)._
 - D4: Template backups keep the community JSON format.
 - D5: The default AI model is `claude-opus-5-5`, through the official SDK in the background worker. The key never reaches the page.
 - D6: Bundled art and shaders are all original. Shadertoy content (mostly CC BY-NC-SA) and ChartSkins media are not bundled.
+- D8: Trade detection is passive (pop-up keywords + manual hotkeys). TVSuite never reads or places orders.
+- D9: Desktop notifications are an optional permission, requested only when turned on.
+- D10: Bridge data never leaves the browser; linked tabs use extension storage and expire after 12 h.
+- D11: Only ProjectX roots confirmed from published contract ids are shown as verified; everything else is flagged and overridable rather than guessed silently.
 - D7: Session HUD and tab use a cached next-event search (measured 50–75 ms/s before).

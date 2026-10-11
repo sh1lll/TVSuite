@@ -36,7 +36,7 @@ function queryMain(q) {
   });
 }
 
-export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, forceInline = false } = {}) {
+export async function startTVSuite({ ai = null, openOptions = null, fetchGallery = null, journal = null, notify = null, forceInline = false } = {}) {
   if (window.__TVSUITE__) return window.__TVSUITE__;
   let settings = await loadSettings();
   const adapter = pickAdapter(settings.sites);
@@ -71,7 +71,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
 
   const skins = createSkinsModule({ adapter, getSettings: () => settings, bus, SkinHost, workerSource: WORKER_SOURCE, forceInline });
   app.skins = skins;
-  const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, update: (fn) => app.update(fn) });
+  const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, notify, update: (fn) => app.update(fn) });
   app.sound = sound;
   app.focus = createFocus(adapter, bus);
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
