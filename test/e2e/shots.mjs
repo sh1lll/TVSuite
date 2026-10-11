@@ -35,6 +35,23 @@ await p.locator('input[data-sound-power]').check();
 await p.locator('label.switch', { hasText: 'Voice announcements' }).click();
 await snap('tab-sound');
 for (const [i, y] of [[1, 700], [2, 1400], [3, 2100]]) { await p.locator('.body').evaluate((b, v) => { b.scrollTop = v; }, y); await snap(`tab-sound-${i}`); }
+await p.locator('.tab[data-tab="risk"]').click();
+await snap('tab-risk-intro');
+await p.locator('button[data-risk-setup]').click();
+await p.locator('label.switch', { hasText: 'Risk Guard' }).click();
+const nr = (label) => p.locator('.row', { hasText: label }).locator('input[type=number]').first();
+for (const [label, v] of [['Starting balance', '50000'], ['Personal Daily Loss Limit', '1000'], ['Personal Daily Profit Target', '1500'], ['Risk — in', '250'], ['Profit — in', '500']]) { await nr(label).fill(v); await nr(label).press('Tab'); }
+await p.locator('.seg button', { hasText: 'EOD trail' }).click();
+await nr('Max loss amount').fill('2000'); await nr('Max loss amount').press('Tab');
+await nr('Stops trailing').fill('50000'); await nr('Stops trailing').press('Tab');
+await snap('tab-risk-rules');
+await p.locator('.body').evaluate((b) => { b.scrollTop = 650; });
+await snap('tab-risk-rules-2');
+await p.locator('.subnav button[data-value="today"]').first().click();
+for (const v of ['-180', '420', '-260']) { await p.locator('input[data-pnl-input]').fill(v); await p.locator('input[data-pnl-input]').press('Enter'); await page.waitForTimeout(300); }
+await snap('tab-risk-today');
+await p.locator('.subnav button[data-value="time"]').first().click();
+await snap('tab-risk-time');
 await p.locator('.tab[data-tab="bridge"]').click();
 await p.locator('input[data-bridge-input]').fill('ES 12-26');
 await snap('tab-bridge');

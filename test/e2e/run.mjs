@@ -517,9 +517,9 @@ await check('journal: Alt+Shift+J captures a clean chart image with context; jou
   await j.locator('.entry').first().waitFor();
   assert.equal(await j.locator('.entry').count(), 1);
   assert.match(await j.locator('.entry').first().textContent(), /BTCUSD/);
-  await j.locator('.entry input[type=number]').fill('2.5');
-  await j.locator('.entry input[type=number]').press('Enter');
-  await j.locator('.entry input[type=number]').blur();
+  await j.locator('.entry input[placeholder="Result R"]').fill('2.5');
+  await j.locator('.entry input[placeholder="Result R"]').press('Enter');
+  await j.locator('.entry input[placeholder="Result R"]').blur();
   await j.waitForFunction(() => /\+2\.50R/.test(document.getElementById('stats').textContent));
   const [dl] = await Promise.all([j.waitForEvent('download'), j.locator('#csv').click()]);
   const file = path.join(OUT, 'journal.csv'); await dl.saveAs(file);
@@ -662,6 +662,89 @@ await check('linked tabs: a symbol seen on another platform tab opens on this ch
   await waitFor(async () => (await layerData(page))?.state === 'running', { message: 'skin running after reload' });
   const seen = await waitFor(() => sw.evaluate(() => chrome.storage.local.get('bridge:seen').then((x) => x['bridge:seen']['www.tradingview.com'])), { message: 'this tab published its symbol' });
   assert.ok(seen.symbol);
+});
+
+console.log('\nRisk Guard');
+const riskTab = async (v) => { const p = await openPanel(page, 'risk'); if (v) await p.locator(`.subnav button[data-value="${v}"]`).first().click(); return p; };
+const numRow = (p, label) => p.locator('.row', { hasText: label }).locator('input[type=number]').first();
+await check('risk guard: set up PDLL/PDPT like a broker, add trades, warn at 80%', async () => {
+  let p = await riskTab('today');
+  await p.locator('button[data-risk-setup]').click();
+  await p.locator('label.switch', { hasText: 'Risk Guard' }).click();
+  for (const [label, v] of [['Starting balance', '50000'], ['Personal Daily Loss Limit', '500'], ['Personal Daily Profit Target', '1000']]) { await numRow(p, label).fill(v); await numRow(p, label).press('Tab'); }
+  p = await riskTab('today');
+  const pnl = p.locator('input[data-pnl-input]');
+  await pnl.fill('-300'); await pnl.press('Enter');
+  await waitFor(async () => (await p.locator('[data-risk-status]').getAttribute('data-risk-status')) === 'ok', { message: 'ok status' });
+  await pnl.fill('-150'); await pnl.press('Enter');
+  await waitFor(async () => (await p.locator('[data-risk-status]').getAttribute('data-risk-status')) === 'warn', { message: 'warn status' });
+  assert.match(await p.locator('[data-alert="pdll"]').textContent(), /90% of your personal daily loss limit/);
+  assert.equal(await p.locator('[data-day-pnl]').getAttribute('data-day-pnl'), '-450');
+  await waitFor(() => page.evaluate(() => document.querySelector('#tvsuite-hud-host')?.shadowRoot.querySelector('[data-hud-risk]')?.dataset.hudRisk === 'warn'), { message: 'HUD shows warning' });
+});
+await check('risk guard: hitting the PDLL blocks the chart until reset; rules lock; typed override unlocks', async () => {
+  const p = await riskTab('today');
+  const pnl = p.locator('input[data-pnl-input]');
+  await pnl.fill('-75'); await pnl.press('Enter');
+  const block = page.locator('#tvsuite-block-host');
+  await block.waitFor({ timeout: 5000 });
+  assert.match(await block.locator('[data-block-reasons]').textContent(), /Personal daily loss limit hit: −\$525/);
+  // Clicks on the chart are swallowed by the overlay.
+  const before = await page.evaluate(() => window.__chartClicks = 0);
+  await page.evaluate(() => document.querySelector('.chart-markup-table').addEventListener('click', () => window.__chartClicks++));
+  await page.mouse.click(700, 400);
+  assert.equal(await page.evaluate(() => window.__chartClicks), before);
+  await (await riskTab('rules')).locator('[data-rules-locked]').waitFor();
+  await page.locator('#tvsuite-panel-host .x').click();
+  await block.getByRole('button', { name: 'Override…' }).click();
+  await block.locator('input[data-override-input]').fill('I accept the risk');
+  assert.ok(await block.getByRole('button', { name: /Wait \d+s/ }).isDisabled());
+  await sleep(30500);
+  assert.equal(await block.locator('input[data-override-input]').inputValue(), 'I accept the risk', 'typing survives the countdown');
+  await waitFor(async () => (await block.getByRole('button', { name: 'Unlock for today' }).count()) > 0, { message: 'unlock enabled', timeout: 4000 });
+  await block.getByRole('button', { name: 'Unlock for today' }).click();
+  await waitFor(async () => (await block.count()) === 0, { message: 'overlay removed after override' });
+});
+await check('risk guard: reads P&L from the screen via the element picker', async () => {
+  let p = await riskTab('today');
+  page.once('dialog', (d) => d.accept());
+  await p.getByRole('button', { name: 'Reset today' }).click();
+  await waitFor(async () => (await p.locator('[data-day-pnl]').getAttribute('data-day-pnl')) === '0', { message: 'day reset' });
+  p = await riskTab('rules');
+  await p.locator('.seg button', { hasText: 'Read from screen' }).click();
+  await p.locator('button[data-pick="realized"]').click();
+  await page.locator('[data-field=realized]').click();
+  p = await riskTab('rules');
+  const sel = await p.locator('.sec', { hasText: 'P&L source' }).locator('code').textContent();
+  assert.ok(sel.length > 3, `selector ${sel}`);
+  await page.evaluate(() => window.mockTV.setPnl('-$120.00'));
+  p = await riskTab('today');
+  await waitFor(async () => (await p.locator('[data-day-pnl]').getAttribute('data-day-pnl')) === '-120', { message: 'screen P&L read' });
+  await page.evaluate(() => window.mockTV.setPnl('-$650.00'));
+  // Today was reset (fired alerts cleared) but the override for the PDLL stands, so: breach shown, no new block.
+  await waitFor(async () => (await p.locator('[data-risk-status]').getAttribute('data-risk-status')) === 'breach', { message: 'breach from screen value' });
+  // Back to manual for the following checks.
+  p = await riskTab('rules');
+});
+await check('journal capture with a P&L adds the trade to Risk Guard', async () => {
+  const [sw] = context.serviceWorkers();
+  await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.source = 'manual'; settings.risk.pdll = 0; settings.risk._meta = undefined; await chrome.storage.local.set({ settings }); });
+  await sleep(600);
+  await page.mouse.click(640, 380);
+  await page.keyboard.press('Alt+Shift+J');
+  const m = panel(page).locator('.modal-bg[data-journal] .modal');
+  await m.waitFor();
+  await m.locator('input[data-journal-pnl]').fill('275');
+  await m.getByRole('button', { name: 'Save' }).click();
+  await waitFor(() => sw.evaluate(() => chrome.storage.local.get('risk:state').then((x) => x['risk:state'].trades.some((t) => t.pnl === 275 && t.journalId))), { message: 'trade from journal' });
+  const p = await riskTab('journal');
+  await waitFor(async () => /\+\$275/.test(await p.locator('.list').first().textContent().catch(() => '')), { message: 'journal list in Risk tab' });
+});
+await check('chart time counts active time on the chart', async () => {
+  await page.bringToFront();
+  for (let i = 0; i < 4; i++) { await page.mouse.move(300 + i * 20, 300); await sleep(1600); }
+  const p = await riskTab('time');
+  await waitFor(async () => +(await p.locator('[data-chart-time]').getAttribute('data-chart-time')) >= 5, { message: 'chart time > 0', timeout: 12000 });
 });
 
 await check('no uncaught TVSuite errors on the page', async () => {

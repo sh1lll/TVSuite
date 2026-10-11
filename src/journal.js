@@ -1,4 +1,5 @@
 // Journal page (extension origin): browse, edit outcomes/notes, stats, export.
+import { tradingDay } from './modules/risk/rules.js';
 import { journalStore, sanitizeEntry } from './modules/journal/store.js';
 import { summarize, toCsv, plannedR, parseTags } from './modules/journal/stats.js';
 
@@ -49,10 +50,26 @@ function render() {
   if (!list.length) $('entries').append(h('p', { class: 'note' }, entries.length ? 'No entries match the filter.' : 'No entries yet. Press Alt+Shift+J on a TradingView chart.'));
 }
 
+// Keep the Risk Guard's P&L log in step with journal edits (same trade, matched by journal id).
+async function syncRisk(e, pnl) {
+  const { 'risk:state': st, settings } = await chrome.storage.local.get(['risk:state', 'settings']);
+  const state = st || { trades: [], screen: {}, peaks: {}, overrides: {}, fired: {}, log: [] };
+  const i = state.trades.findIndex((t) => t.journalId === e.id);
+  if (pnl == null) { if (i >= 0) state.trades.splice(i, 1); }
+  else if (i >= 0) state.trades[i].pnl = pnl;
+  else {
+    const tz = settings?.risk?.tz || 'America/Chicago', reset = settings?.risk?.reset || '17:00';
+    state.trades.push({ id: `t${e.createdAt.toString(36)}`, at: e.createdAt, day: tradingDay(new Date(e.createdAt), tz, reset), pnl, contracts: e.contracts ?? null, symbol: e.symbol, note: '', journalId: e.id });
+  }
+  await chrome.storage.local.set({ 'risk:state': state });
+}
+
 function card(e) {
   const save = async (patch) => { Object.assign(e, patch); await journalStore.put(e); render(); };
   const result = h('input', { type: 'number', step: '0.1', placeholder: 'Result R', value: e.resultR ?? '' });
   result.addEventListener('change', () => save({ resultR: result.value === '' ? null : +result.value }));
+  const pnl = h('input', { type: 'number', step: 'any', placeholder: 'P&L $', value: e.pnl ?? '', style: 'max-width:110px' });
+  pnl.addEventListener('change', async () => { const v = pnl.value === '' ? null : +pnl.value; await save({ pnl: v }); await syncRisk(e, v); });
   const note = h('textarea', { placeholder: 'Notes' }); note.value = e.note || '';
   note.addEventListener('change', () => save({ note: note.value }));
   const tags = h('input', { type: 'text', placeholder: 'tags', value: e.tags.join(' ') });
@@ -64,7 +81,7 @@ function card(e) {
       h('div', { class: 'row' }, h('b', {}, e.symbol || '—'), h('span', { class: 'note' }, `${new Date(e.createdAt).toLocaleString()} · ${e.session || 'no session'}`)),
       h('div', { class: 'row' }, h('span', { class: e.side === 'long' ? 'pos' : e.side === 'short' ? 'neg' : 'note' }, e.side), e.price != null ? h('span', { class: 'note' }, `@ ${e.price}`) : null,
         pr != null ? h('span', { class: 'note' }, `planned ${pr.toFixed(2)}R`) : null, h('span', { class: e.resultR > 0 ? 'pos' : e.resultR < 0 ? 'neg' : 'note' }, fmtR(e.resultR))),
-      h('div', { class: 'row' }, result, tags),
+      h('div', { class: 'row' }, result, pnl, tags),
       note,
       h('div', { class: 'row' }, e.url ? h('a', { href: e.url, target: '_blank', rel: 'noopener', class: 'note' }, 'open chart') : null,
         h('button', { onclick: async () => { if (confirm('Delete this journal entry?')) { await journalStore.remove(e.id); entries = entries.filter((x) => x.id !== e.id); render(); } } }, 'Delete'))));

@@ -52,6 +52,7 @@ svg.i { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentCo
 .sec > .t .grow { flex: 1; }
 .row { display: flex; align-items: center; gap: 10px; margin: 7px 0; min-height: 26px; }
 .row > label.l { flex: 0 0 96px; color: var(--muted); }
+.wide-labels .row > label.l { flex-basis: 168px; font-size: 12px; }
 .row > .grow { flex: 1; min-width: 0; }
 .val { flex: 0 0 46px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; font-size: 11.5px; opacity: .85; }
 
@@ -199,6 +200,10 @@ const ICONS = {
   code: ['M8 6l-6 6 6 6', 'M16 6l6 6-6 6'],
   play: ['M7 4l13 8-13 8z'],
   check: ['M5 12l5 5 9-11'],
+  shield: ['M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z', 'M9 12l2 2 4-4'],
+  risk: ['M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z', 'M9 12l2 2 4-4'],
+  book: ['M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z', 'M4 16a4 4 0 0 1 4-4h10'],
+  target: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M12 12h.01'],
   power: ['M12 2v10', 'M18.4 6.6a9 9 0 1 1-12.8 0'],
   sound: ['M11 5L6 9H2v6h4l5 4z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M19 5a10 10 0 0 1 0 14'],
   mute: ['M11 5L6 9H2v6h4l5 4z', 'M22 9l-6 6', 'M16 9l6 6'],

@@ -11,6 +11,9 @@ import { createSoundModule } from './modules/sound/index.js';
 import { SkinHost } from './modules/skins/host.js';
 import { createFocus } from './modules/tools/focus.js';
 import { createSymbolLink } from './modules/bridge/link.js';
+import { createRiskGuard } from './modules/risk/index.js';
+import { createChartTime } from './modules/risk/chart-time.js';
+import { createBlockOverlay } from './ui/block-overlay.js';
 import { createPanel } from './ui/panel.js';
 import { createHud } from './ui/hud.js';
 import { setupJournalCapture } from './ui/journal-capture.js';
@@ -74,10 +77,14 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   const sound = createSoundModule({ adapter, getSettings: () => settings, bus, forceInline, notify, update: (fn) => app.update(fn) });
   app.sound = sound;
   app.focus = createFocus(adapter, bus);
+  app.risk = createRiskGuard({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
+  app.chartTime = createChartTime({ getSettings: () => settings, bus, symbol: () => skins.symbol() });
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   await skins.start();
   sound.start();
   const panel = await createPanel(app);
+  app.panel = panel;
+  createBlockOverlay(app);
   createHud(app);
   setupJournalCapture(app);
 

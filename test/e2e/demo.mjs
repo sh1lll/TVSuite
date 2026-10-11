@@ -183,8 +183,8 @@ await p.locator('.modal-bg[data-journal]').getByRole('button', { name: 'Save' })
 await sleep(800);
 const j = await context.newPage();
 await j.goto(`chrome-extension://${extensionId}/journal.html`);
-await j.locator('.entry input[type=number]').fill('2.5');
-await j.locator('.entry input[type=number]').blur();
+await j.locator('.entry input[placeholder="Result R"]').fill('2.5');
+await j.locator('.entry input[placeholder="Result R"]').blur();
 await sleep(1500);
 await j.screenshot({ path: path.join(OUT, `${String(++still).padStart(2, '0')}-journal-page.png`) });
 await j.close();

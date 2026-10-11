@@ -13,6 +13,11 @@ export const EVENTS = [
   { id: 'sessionSoon', name: 'One minute to session open', group: 'Sessions', voice: '{session} opens in one minute', how: 'Session clock' },
   { id: 'calm', name: 'Calm mode engaged', group: 'Skins', voice: '', how: 'Reactive skins (needs Reactive on)' },
   { id: 'journal', name: 'Journal capture', group: 'Tools', voice: '', how: 'Alt+Shift+J' },
+  { id: 'riskWarn', name: 'Risk warning', group: 'Risk', voice: '{text}', how: 'Risk Guard: a limit is close' },
+  { id: 'riskBreach', name: 'Risk limit hit', group: 'Risk', voice: '{text}', how: 'Risk Guard: a loss rule was hit' },
+  { id: 'riskTarget', name: 'Daily target reached', group: 'Risk', voice: '{text}', how: 'Risk Guard: daily profit target' },
+  { id: 'breakReminder', name: 'Take a break', group: 'Risk', voice: '{text}', how: 'Chart time: continuous time on the chart' },
+  { id: 'chartTimeLimit', name: 'Chart time limit', group: 'Risk', voice: '{text}', how: 'Chart time: daily limit' },
 ];
 
 const S = (id) => ({ kind: 'synth', id });
@@ -36,6 +41,11 @@ export const DEFAULT_SOUND = {
     sessionSoon: { sound: S('blip'), volume: 0.6, voice: false, on: false },
     calm: { sound: S('pop'), volume: 0.5, voice: false, on: false },
     journal: { sound: S('click'), volume: 0.6, voice: false, on: true },
+    riskWarn: { sound: S('alarm'), volume: 0.8, voice: true, on: true },
+    riskBreach: { sound: S('fail'), volume: 1, voice: true, on: true },
+    riskTarget: { sound: S('levelup'), volume: 0.9, voice: true, on: true },
+    breakReminder: { sound: S('chime'), volume: 0.7, voice: true, on: true },
+    chartTimeLimit: { sound: S('gong'), volume: 0.7, voice: true, on: true },
   },
   bigCandleMultiple: 2.5,
   alerts: [],                  // { id, symbol, level, dir: 'up'|'down'|'any', once, armed }

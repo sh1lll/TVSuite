@@ -1,4 +1,5 @@
 // The single settings document. New keys get defaults via withDefaults() on load.
+import { DEFAULT_RISK } from '../modules/risk/rules.js';
 import { storage, withDefaults } from './storage.js';
 import { DEFAULT_REACTIVE } from '../modules/skins/signals.js';
 import { DEFAULT_SESSIONS } from '../modules/sessions/sessions.js';
@@ -55,6 +56,16 @@ export const DEFAULT_SETTINGS = {
     skinsView: 'library',
   },
   sites: [],                // custom sites for the generic adapter: { host, selector }
+  risk: structuredClone(DEFAULT_RISK),
+  chartTime: {
+    enabled: true,            // local only: how long you're on the chart per day, session and symbol
+    countWhen: 'focused',     // focused | visible
+    idleMin: 5,               // stop counting after this long without mouse/keyboard activity
+    sessions: [],             // [] = all; otherwise only these session ids (plus 'none' = outside sessions)
+    dailyLimitMin: 0,         // reminder when today's chart time passes this (0 = off)
+    breakEveryMin: 0,         // break reminder after this much continuous chart time (0 = off)
+    breakLenMin: 5,           // a gap this long counts as a break
+  },
   bridge: {
     share: true,              // publish this tab's symbol to your other TVSuite tabs (local storage only)
     projectxRoots: {},        // user overrides: { CL: 'CLE' } for ProjectX/TopstepX contract ids

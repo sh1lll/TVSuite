@@ -16,6 +16,10 @@ const journal = {
     resolve();
   })),
   open: () => chrome.runtime.sendMessage({ type: 'journal.open' }),
+  list: ({ since = 0 } = {}) => new Promise((resolve, reject) => chrome.runtime.sendMessage({ type: 'journal.list', since }, (res) => {
+    if (chrome.runtime.lastError || !res || res.error) return reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Journal unavailable'));
+    resolve(res.entries);
+  })),
 };
 
 const notify = (n) => { try { chrome.runtime.sendMessage({ type: 'notify', ...n }).catch(() => {}); } catch (_) { /* extension reloaded */ } };

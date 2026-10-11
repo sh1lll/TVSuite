@@ -175,7 +175,7 @@ export function createSoundModule(ctx) {
 
   bus.on('journal:capture', () => fire('journal'));
   bus.on('skins:signals', (sig) => { if (sig.calm > 0.5 && lastCalm <= 0.5) fire('calm'); lastCalm = sig.calm; });
-  bus.on('sound:manual', (type) => fire(type, {}, { force: true }));
+  bus.on('sound:manual', (x) => (typeof x === 'string' ? fire(x, {}, { force: true }) : fire(x.type, x.vars || {}, { force: !!x.force })));
 
   function update() {
     if (cfg().enabled) { mount(); pushConfig(); } else unmount();

@@ -98,6 +98,7 @@
     setVolatility(v) { vol = v; },
     setPrice(p) { price = p; last.c = p; last.h = Math.max(last.h, p); last.l = Math.min(last.l, p); legend(); },
     price() { return last.c; },
+    setPnl(realized, open) { if (realized != null) document.querySelector('[data-field=realized]').textContent = realized; if (open != null) document.querySelector('[data-field=open]').textContent = open; },
     toast(text) {                                             // a notification like TradingView's order/alert toasts
       const t = document.createElement('div'); t.className = 'toast-mock';
       Object.assign(t.style, { position: 'fixed', right: '24px', bottom: '90px', background: '#1e222d', color: '#d1d4dc', border: '1px solid #2a2e39', borderLeft: '4px solid #089981', borderRadius: '6px', padding: '12px 16px', font: '14px -apple-system, Segoe UI, sans-serif', zIndex: 50, boxShadow: '0 8px 24px rgba(0,0,0,.4)' });
@@ -120,5 +121,9 @@
   };
 })();
 </script>
+<div class="bottom-widgetbar-content accountManager-Xy12ab" style="position:fixed;right:90px;top:6px;z-index:5;font:12px -apple-system,Segoe UI,sans-serif;color:#d1d4dc;background:#1e222d;border:1px solid #2a2e39;border-radius:6px;padding:4px 8px;display:flex;gap:10px">
+  <span>Realized P&amp;L <b class="pnlValue-Qq81Lm" data-field="realized">$0.00</b></span>
+  <span>Unrealized <b class="pnlValue-Qq81Lm" data-field="open">$0.00</b></span>
+</div>
 </body>
 </html>

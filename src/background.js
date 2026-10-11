@@ -30,6 +30,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then((d) => sendResponse({ skins: Array.isArray(d?.skins) ? d.skins.slice(0, 200) : [] }), (err) => sendResponse({ error: err.message }));
     return true;
   }
+  if (msg?.type === 'journal.list') {
+    journalStore.all()
+      .then((all) => sendResponse({ entries: all.filter((e) => e.createdAt >= (+msg.since || 0)).slice(0, 100).map(({ image, ...rest }) => rest) }), (err) => sendResponse({ error: err.message }));
+    return true;
+  }
   if (msg?.type === 'journal.open') {
     chrome.tabs.create({ url: chrome.runtime.getURL('journal.html') });
     sendResponse({ ok: true });

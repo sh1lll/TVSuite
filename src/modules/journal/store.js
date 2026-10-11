@@ -35,6 +35,7 @@ export function sanitizeEntry(input) {
     session: String(e.session || '').slice(0, 40),
     side: ['long', 'short', 'none'].includes(e.side) ? e.side : 'none',
     entry: num(e.entry), stop: num(e.stop), target: num(e.target), resultR: num(e.resultR),
+    pnl: num(e.pnl), contracts: num(e.contracts),
     tags: Array.isArray(e.tags) ? e.tags.map(String).slice(0, 12) : [],
     note: String(e.note || '').slice(0, 5000),
     url: typeof e.url === 'string' && /^https:\/\//.test(e.url) ? e.url.slice(0, 500) : '',
