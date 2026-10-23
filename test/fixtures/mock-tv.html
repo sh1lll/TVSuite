@@ -102,7 +102,14 @@ window.addEventListener('keyup', (e) => window.__tvKeys.push('up:' + e.key), tru
   requestAnimationFrame(frame);
   // Minimal stand-in for TradingView's page API (activeChart().setSymbol / setResolution).
   let resolution = '15';
-  window.TradingViewApi = { activeChart: () => ({ setSymbol: (s) => window.mockTV.setSymbol(s.split(':').pop()), setResolution: (r) => { resolution = r; }, symbol: () => symbol, resolution: () => resolution }) };
+  // Drawing calls (createShape / createMultipointShape / removeEntity) are recorded in window.mockShapes.
+  window.mockShapes = new Map();
+  let shapeId = 0;
+  const addShape = (points, opts) => { const id = `s${++shapeId}`; window.mockShapes.set(id, { points, opts }); return id; };
+  window.TradingViewApi = { activeChart: () => ({ setSymbol: (s) => window.mockTV.setSymbol(s.split(':').pop()), setResolution: (r) => { resolution = r; }, symbol: () => symbol, resolution: () => resolution,
+    createShape: (point, opts) => addShape([point], opts), createMultipointShape: (points, opts) => addShape(points, opts), removeEntity: (id) => { window.mockShapes.delete(id); },
+    getAllShapes: () => [...window.mockShapes].map(([id, s]) => ({ id, name: s.opts.shape })),
+    getShapeById: (id) => { const s = window.mockShapes.get(id); return { getPoints: () => s.points, getProperties: () => ({ ...s.opts.overrides, ...s.props }), setProperties: (p) => { s.props = p; } }; } }) };
   // Test hooks (main world).
   window.mockTV = {
     setVolatility(v) { vol = v; },

@@ -55,6 +55,23 @@ export const DEFAULT_SETTINGS = {
     tab: 'skins',
     skinsView: 'library',
   },
+  levels: {                 // Ledgeline export pasted in the Levels tab, drawn through the chart's page API
+    text: '',
+    types: { PRIME: true, VL: true, RZ: true, PRINT: true, NPOC: true },
+    style: 'box',           // box (top to bottom) | line (one line at the middle)
+    labels: true,
+    fillAlpha: 0.18,
+    extendHours: 24,        // boxes run from this many hours back to this many hours ahead of now
+    replace: true,          // clear the previous TVSuite levels before drawing
+    active: false,          // on after Draw, off after Remove; while on, the levels are redrawn whenever a chart opens
+    lockPermanent: true,    // permanent levels (saved into the platform's layout) are locked against accidental moves
+    colors: { PRIME: '#f5be28', VL: '#9696a0', RZ: '#6e96be', PRINT: '#2962ff', NPOC: '#ff9800' },
+    templates: { PRIME: '', VL: '', RZ: '', PRINT: '', NPOC: '' }, // saved drawing template per type ('' = the color above)
+  },
+  drawings: {               // drawings copied from a TradingView chart and pasted onto other platforms' charts
+    replace: true,          // pasting permanently removes the drawings TVSuite pasted on that site before
+    lock: false,            // pasted drawings are locked against accidental moves
+  },
   sites: [],                // custom sites for the generic adapter: { host, selector }
   risk: structuredClone(DEFAULT_RISK),
   chartTime: {

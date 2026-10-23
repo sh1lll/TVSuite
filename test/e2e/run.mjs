@@ -987,6 +987,36 @@ await check('room lighting: devices get the session colour, a flash on a fill, a
   await waitFor(() => mock.requests.find((r) => r.url === '/json/state' && /"col":\[\[242,54,69\]\]/.test(r.text)), { message: 'red on breach', timeout: 8000 });
   await sw.evaluate(async () => { const { settings } = await chrome.storage.local.get('settings'); settings.risk.pdll = 0; settings.lights.enabled = false; delete settings._meta; await chrome.storage.local.set({ settings }); });
 });
+await check('levels: a pasted Ledgeline export is drawn through the chart API and removed again', async () => {
+  const p = await openPanel(page, 'levels');
+  await p.locator('textarea').first().fill('[2026-10-23T06:31:00]: Ledgeline levels · header\nVL,29512.25,29508.00,rejections 5\nPRIME,29480.5,29476.5,rejection zone + volume ledge\nNPOC,29401.75,29401.75,naked POC');
+  await p.getByText('Draw on this chart').click();
+  await waitFor(() => page.evaluate(() => window.mockShapes.size === 3), { message: 'three shapes drawn' });
+  const shapes = await page.evaluate(() => [...window.mockShapes.values()].map((s) => ({ shape: s.opts.shape, keep: s.opts.disableSave, n: s.points.length })));
+  assert.deepEqual(shapes.map((s) => s.shape).sort(), ['horizontal_line', 'rectangle', 'rectangle']);
+  assert.ok(shapes.every((s) => s.keep === true), 'kept out of the saved layout');
+  await p.getByText('Remove TVSuite levels').click();
+  await waitFor(() => page.evaluate(() => window.mockShapes.size === 0), { message: 'shapes removed' });
+});
+await check('drawings: the chart\'s own drawings are copied and pasted back permanently, then removed', async () => {
+  await page.evaluate(() => {
+    const c = window.TradingViewApi.activeChart();
+    c.createMultipointShape([{ time: 1700000000, price: 29500 }, { time: 1700003600, price: 29490 }], { shape: 'rectangle', overrides: { color: '#ff0000', symbol: 'BTCUSD' } });
+    c.createShape({ time: 1700000000, price: 29400 }, { shape: 'horizontal_line', overrides: { linecolor: '#00ff00' } });
+  });
+  const p = await openPanel(page, 'levels');
+  await p.getByText('Copy drawings from this chart').click();
+  await p.getByText(/Copied 2 drawings/).first().waitFor();
+  await page.evaluate(() => window.mockShapes.clear());
+  await p.getByRole('button', { name: 'Paste here' }).click();
+  await waitFor(() => page.evaluate(() => window.mockShapes.size === 2), { message: 'two drawings pasted' });
+  const shapes = await page.evaluate(() => [...window.mockShapes.values()].map((s) => ({ shape: s.opts.shape, save: s.opts.disableSave, ov: s.opts.overrides })));
+  assert.ok(shapes.every((s) => s.save === false), 'saved into the layout');
+  assert.ok(shapes.every((s) => !('symbol' in s.ov)), 'source symbol dropped');
+  assert.equal(shapes.find((s) => s.shape === 'rectangle').ov.color, '#ff0000');
+  await p.getByText('Remove pasted drawings').click();
+  await waitFor(() => page.evaluate(() => window.mockShapes.size === 0), { message: 'pasted drawings removed' });
+});
 await check('voice/typed commands: switch symbol + interval via the chart API, log a trade, answer P&L', async () => {
   const p = await openPanel(page, 'sound');
   await p.locator('.subnav button[data-value="voice"]').first().click();

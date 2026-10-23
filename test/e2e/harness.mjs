@@ -7,7 +7,8 @@ import path from 'node:path';
 
 export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 export const EXT = path.join(ROOT, 'dist/extension');
-export const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium/chrome-linux/chrome'].find(existsSync);
+// TVSUITE_CHROME points at a Chromium build that allows --load-extension (branded Chrome no longer does).
+export const CHROME = [process.env.TVSUITE_CHROME, '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium/chrome-linux/chrome'].filter(Boolean).find(existsSync);
 const MOCK = readFileSync(path.join(ROOT, 'test/fixtures/mock-tv.html'), 'utf8');
 
 export function makeBackend() {
