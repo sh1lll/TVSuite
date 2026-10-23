@@ -29,6 +29,7 @@ import { starterSkins } from './modules/skins/starters.js';
 import { createTvApi } from './modules/templates/api.js';
 import { createLevels } from './modules/levels/index.js';
 import { createDrawings } from './modules/drawings/index.js';
+import { createLabs } from './modules/labs/index.js';
 import { WORKER_SOURCE } from 'tvsuite:worker-source';
 
 export const VERSION = '0.1.0';
@@ -112,6 +113,7 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
   app.levels = createLevels(app);
   app.drawings = createDrawings(app);
+  app.labs = createLabs(app);
   await skins.start();
   sound.start();
   const panel = await createPanel(app);

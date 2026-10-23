@@ -95,11 +95,87 @@
     return null;
   }
 
+  // Labs: TVSuite's own indicators inside embedded charts (TradeSea, TopstepX). The Charting Library only takes custom
+  // indicators when the chart is created, through the widget's custom_indicators_getter option, so TradingView.widget
+  // is wrapped as soon as the library script has run. The wrapper always passes the platform's own indicators through
+  // and only adds TVSuite's when Labs → indicators is on for this site (a localStorage flag the content script sets).
+  const IND_FLAG = 'tvsuite:labs:indicators';
+  function tvsuiteIndicators(PineJS) {
+    const Std = PineJS.Std;
+    return [{
+      name: 'TVSuite Demo MA',
+      metainfo: {
+        _metainfoVersion: 53,
+        id: 'TVSuiteDemoMA@tv-basicstudies-1',
+        name: 'TVSuite Demo MA',
+        description: 'TVSuite Demo MA',
+        shortDescription: 'TVSuite MA',
+        is_price_study: true,
+        isCustomIndicator: true,
+        format: { type: 'inherit' },
+        plots: [{ id: 'plot_0', type: 'line' }, { id: 'plot_1', type: 'line' }],
+        defaults: {
+          styles: {
+            plot_0: { linestyle: 0, visible: true, linewidth: 2, plottype: 0, trackPrice: false, transparency: 0, color: '#f5be28' },
+            plot_1: { linestyle: 0, visible: true, linewidth: 2, plottype: 0, trackPrice: false, transparency: 0, color: '#2962ff' },
+          },
+          inputs: { in_0: 20 },
+        },
+        styles: { plot_0: { title: 'SMA', histogramBase: 0 }, plot_1: { title: 'VWMA (uses volume)', histogramBase: 0 } },
+        inputs: [{ id: 'in_0', name: 'Length', defval: 20, type: 'integer', min: 1, max: 500 }],
+      },
+      constructor: function () {
+        this.main = function (context, inputCallback) {
+          this._context = context;
+          this._input = inputCallback;
+          const len = this._input(0);
+          const c = Std.close(this._context), v = Std.volume(this._context);
+          const sma = Std.sma(this._context.new_var(c), len, this._context);
+          const cv = Std.sum(this._context.new_var(c * v), len, this._context), vv = Std.sum(this._context.new_var(v), len, this._context);
+          return [sma, vv ? cv / vv : NaN];
+        };
+      },
+    }];
+  }
+  function indicatorsOn() { try { return localStorage.getItem(IND_FLAG) === '1'; } catch (_) { return false; } }
+  function wrapWidget() {
+    const TV = window.TradingView;
+    const Orig = TV && TV.widget;
+    if (typeof Orig !== 'function' || Orig.__tvsuite) return;
+    const Wrapped = function (opts) {
+      try {
+        if (opts && typeof opts === 'object' && indicatorsOn()) {
+          const theirs = opts.custom_indicators_getter;
+          opts.custom_indicators_getter = function (PineJS) {
+            const own = Promise.resolve(typeof theirs === 'function' ? theirs.call(this, PineJS) : []).catch(() => []);
+            return own.then((list) => {
+              let mine = [];
+              try { mine = tvsuiteIndicators(PineJS); } catch (_) { /* never break the platform's chart */ }
+              window.__tvsuiteIndicators = mine.map((x) => x.name);
+              return [...(Array.isArray(list) ? list : []), ...mine];
+            });
+          };
+          window.__tvsuiteWidgetWrapped = (window.__tvsuiteWidgetWrapped || 0) + 1;
+        }
+      } catch (_) { /* fall through to the platform's own options */ }
+      return new Orig(opts);
+    };
+    Wrapped.prototype = Orig.prototype;
+    Wrapped.__tvsuite = true;
+    try { TV.widget = Wrapped; } catch (_) { try { Object.defineProperty(TV, 'widget', { value: Wrapped, configurable: true, writable: true }); } catch (__) { /* frozen */ } }
+  }
+  // A classic script's load event fires right after it runs and before the next one, so the platform can't create
+  // its chart in between. Checked on every script load (cheap) and once now in case the library is already there.
+  document.addEventListener('load', (e) => { if (e.target && e.target.tagName === 'SCRIPT') wrapWidget(); }, true);
+  wrapWidget();
+
   // Shapes drawn by the Levels tab, so they can be cleared without touching the user's own drawings.
   const levelIds = (window.__tvsuiteLevelIds = window.__tvsuiteLevelIds || []);
-  function clearLevels(chart) {
+  // Labs demo levels are kept apart, so drawing or clearing them never touches the pasted Ledgeline levels.
+  const demoIds = (window.__tvsuiteDemoIds = window.__tvsuiteDemoIds || []);
+  function clearLevels(chart, ids = levelIds) {
     let n = 0;
-    for (const id of levelIds.splice(0)) {
+    for (const id of ids.splice(0)) {
       try { chart.removeEntity(id); n++; } catch (_) { /* already removed by the user */ }
     }
     return n;
@@ -109,12 +185,13 @@
   // ids are reported back with a 'tvsuite:levelsPerm' event so TVSuite can remove them later.
   function drawLevels(chart, levels, opts) {
     const permanent = !!opts.permanent;
-    if (permanent || opts.replace !== false) clearLevels(chart);
+    const bucket = opts.bucket === 'demo' ? demoIds : levelIds;
+    if (permanent || opts.replace !== false) clearLevels(chart, bucket);
     const now = Math.floor(Date.now() / 1000);
     const span = Math.max(1, Math.min(24 * 14, +opts.extendHours || 24)) * 3600;
     const base = permanent ? { lock: !!opts.lock, disableSave: false, disableUndo: true, zOrder: 'bottom' } : { lock: true, disableSave: true, disableUndo: true, zOrder: 'bottom' };
     const made = [];
-    const keep = (r) => made.push(Promise.resolve(r).then((id) => { if (id != null && !permanent) levelIds.push(id); return id; }).catch(() => null));
+    const keep = (r) => made.push(Promise.resolve(r).then((id) => { if (id != null && !permanent) bucket.push(id); return id; }).catch(() => null));
     // Template styles (already filtered to plain values by the content script) win over the default look.
     const tplOf = (l) => {
       const out = {};
@@ -156,7 +233,7 @@
   const drawingIds = (window.__tvsuiteDrawingIds = window.__tvsuiteDrawingIds || []);
   function copyDrawings(chart) {
     if (typeof chart.getAllShapes !== 'function' || typeof chart.getShapeById !== 'function') return { ok: false, reason: 'This chart doesn\'t let pages read its drawings.' };
-    const own = new Set([...levelIds, ...drawingIds].map(String));
+    const own = new Set([...levelIds, ...demoIds, ...drawingIds].map(String));
     const items = [];
     let failed = 0;
     for (const s of chart.getAllShapes().slice(0, 1000)) {
@@ -221,8 +298,36 @@
     return n;
   }
 
+  // The chart's loaded bars (time in seconds, OHLC, and volume when a Volume indicator is on the chart). exportData is
+  // async, so this one answers a moment later instead of inline.
+  function chartBars(chart) {
+    if (typeof chart.exportData !== 'function') return Promise.resolve({ ok: false, reason: 'This chart doesn\'t let pages read its bars.' });
+    const studies = typeof chart.getAllStudies === 'function' ? chart.getAllStudies() : [];
+    const vol = studies.find((s) => /^volume$/i.test(String(s.name || '')));
+    return chart.exportData({ includeTime: true, includeSeries: true, includedStudies: vol ? [vol.id] : [] }).then((d) => {
+      const col = (pred) => d.schema.findIndex(pred);
+      const iT = col((s) => s.type === 'time');
+      const iO = col((s) => s.sourceType === 'series' && s.plotTitle === 'open'), iH = col((s) => s.sourceType === 'series' && s.plotTitle === 'high');
+      const iL = col((s) => s.sourceType === 'series' && s.plotTitle === 'low'), iC = col((s) => s.sourceType === 'series' && s.plotTitle === 'close');
+      const iV = col((s) => s.sourceType === 'study' && /vol/i.test(String(s.plotTitle || '')));
+      const bars = d.data.slice(-20000).map((r) => [r[iT], r[iO], r[iH], r[iL], r[iC], iV >= 0 ? r[iV] : null]);
+      return { ok: true, symbol: typeof chart.symbol === 'function' ? chart.symbol() : null, resolution: typeof chart.resolution === 'function' ? chart.resolution() : null, volume: iV >= 0, bars };
+    }).catch((err) => ({ ok: false, reason: `The chart wouldn't export its bars (${String(err && err.message || err).slice(0, 80)}).` }));
+  }
+
   // Answer small, explicit queries from the isolated-world content script.
   document.addEventListener('tvsuite:query', (e) => {
+    try {
+      const q = String(e.detail || '');
+      if (q.startsWith('{') && JSON.parse(q).cmd === 'chartBars') {
+        const found = chartApi();
+        const lc = found && found.api.activeChart();
+        const answer = (r) => document.dispatchEvent(new CustomEvent('tvsuite:answer', { detail: JSON.stringify(r) }));
+        if (!lc) answer({ ok: false, reason: 'This frame has no TradingView chart API.' });
+        else chartBars(lc).then(answer);
+        return;
+      }
+    } catch (_) { /* handled below like any other query */ }
     let detail = null;
     try {
       const q = String(e.detail || '');
@@ -271,8 +376,8 @@
           else if (cmd.cmd === 'drawingsPaste') detail = JSON.stringify({ ok: true, symbol: typeof lc.symbol === 'function' ? lc.symbol() : null, ...pasteDrawings(lc, Array.isArray(cmd.items) ? cmd.items : [], cmd.opts || {}) });
           else if (cmd.cmd === 'drawingsClear') detail = JSON.stringify({ ok: true, count: removeIds(lc, drawingIds.splice(0)) });
           else if (cmd.cmd === 'levelsProbe') {
-            detail = JSON.stringify({ ok: true, via: found.via, symbol: typeof lc.symbol === 'function' ? lc.symbol() : null, rectangles: typeof lc.createMultipointShape === 'function', lines: typeof lc.createShape === 'function', drawn: levelIds.length });
-          } else if (cmd.cmd === 'levelsClear') detail = JSON.stringify({ ok: true, count: clearLevels(lc) });
+            detail = JSON.stringify({ ok: true, via: found.via, symbol: typeof lc.symbol === 'function' ? lc.symbol() : null, rectangles: typeof lc.createMultipointShape === 'function', lines: typeof lc.createShape === 'function', drawn: levelIds.length, indicators: (() => { try { return window.top.__tvsuiteIndicators || window.__tvsuiteIndicators || null; } catch (_) { return window.__tvsuiteIndicators || null; } })() });
+          } else if (cmd.cmd === 'levelsClear') detail = JSON.stringify({ ok: true, count: clearLevels(lc, cmd.bucket === 'demo' ? demoIds : levelIds) });
           else if (cmd.cmd === 'levelsRemoveIds') detail = JSON.stringify({ ok: true, count: removeIds(lc, Array.isArray(cmd.ids) ? cmd.ids : []) });
           else detail = JSON.stringify({ ok: true, count: drawLevels(lc, Array.isArray(cmd.levels) ? cmd.levels : [], cmd.opts || {}) });
         } else if (cmd.cmd === 'chartInfo' && chart) {
