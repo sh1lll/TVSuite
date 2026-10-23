@@ -11,6 +11,7 @@ export function levelsTab(app) {
   const wrap = el('div');
   let summary, status, tplNames = [], permCount = 0, snapCount = 0;
   let dstatus, copies = {}, chosen = null, chartSymbol = null, dPermCount = 0;
+  let lstatus, injected = null;
   const onTV = /(^|\.)tradingview\.com$/.test(location.hostname);
 
   const say = (text, kind = '') => { if (status) setChildren(status, el('div', { class: `note${kind ? ` ${kind}` : ''}` }, text)); };
@@ -121,6 +122,33 @@ export function levelsTab(app) {
       dstatus = el('div'));
   }
 
+  const sayL = (text, kind = '') => { if (lstatus) setChildren(lstatus, el('div', { class: `note${kind ? ` ${kind}` : ''}` }, text)); };
+
+  // Labs: proof of concept for indicators on embedded charts without TradingView.
+  function labsSection() {
+    const fmt = (n) => (Math.round(n * 100) / 100).toLocaleString();
+    const runL = async (fn, done) => {
+      let msg, kind = 'err';
+      try { const r = await fn(); if (r?.ok) { msg = done(r); kind = 'ok'; } else msg = r?.reason || 'Something went wrong.'; } catch (err) { msg = err.message; }
+      render(); sayL(msg, kind);
+    };
+    return section('Labs (experimental)',
+      el('div', { class: 'note' }, 'Two experiments for running indicators on TopstepX, TradeSea and other embedded charts without TradingView.'),
+      toggle({ label: 'Add TVSuite indicators to this platform\'s chart', checked: app.labs.indicatorsOn(), onChange: (v) => { app.labs.setIndicators(v); sayL(v ? 'On for this site. Reload the page, then find "TVSuite Demo MA" in the chart\'s Indicators menu.' : 'Off for this site. Reload the page to take it out.', 'ok'); } }),
+      el('div', { class: 'row' }, el('span', { class: 'grow' }, 'Injected on this chart'),
+        injected == null ? chip('Not checked') : injected.length ? chip(injected.join(', '), 'ok') : chip('None')),
+      el('div', { class: 'btns' },
+        button('Check injection', () => runL(async () => { const r = await app.levels.probe(); if (r?.ok) injected = r.indicators || []; return r; },
+          () => (injected.length ? `Injected: ${injected.join(', ')}. Add it from the chart's Indicators menu.` : 'Nothing injected yet. Turn the toggle on and reload the page.')))),
+      el('div', { class: 'note' }, 'Injected indicators run inside the platform\'s chart on its own live data (the demo plots an SMA and a volume-weighted MA). They only load when the chart is created, so changes need a page reload.'),
+      el('div', { class: 'btns' },
+        button('Draw session levels from chart bars', () => runL(() => app.labs.drawSessions(),
+          (r) => `Read ${r.bars.toLocaleString()} bars (${r.resolution}${r.volume ? ', with volume' : ''}) and drew ${r.count} levels for ${r.day}: ${r.levels.map((l) => `${l.label} ${fmt(l.top)}`).join(' · ')}`), 'primary'),
+        button('Remove session levels', () => runL(() => app.labs.clearSessions(), (r) => `Removed ${r.count} levels`))),
+      el('div', { class: 'note' }, 'Compute and draw: TVSuite reads the bars already on this chart, works out prior day high/low, overnight high/low and the RTH open (New York time), and draws them. Nothing comes from TradingView.'),
+      lstatus = el('div'));
+  }
+
   // Template names for the current draw mode come from the Backup tab's snapshots, so reload them on each render.
   async function loadTemplates() {
     tplNames = [...(await app.levels.templates()).keys()].sort((a, b) => a.localeCompare(b));
@@ -196,6 +224,7 @@ export function levelsTab(app) {
           button('Draw permanently', () => run(() => app.levels.drawPermanent(), (r) => `Saved ${r.count} levels into this chart`)),
           button('Remove permanent levels', () => run(() => app.levels.removePermanent(), (r) => r.count ? `Removed ${r.count} permanent levels` : 'No permanent levels to remove'))),
         el('div', { class: 'note' }, 'Permanent levels are saved into this platform\'s chart layout, like drawings you made by hand, so they stay without TVSuite and you can move or delete them yourself. Drawing permanently turns the auto-redraw above off so the two don\'t double up. TVSuite remembers what it saved on this site and can remove it again. Reload the page once to check that the platform keeps them; if it doesn\'t save layouts, use Draw on this chart instead.')),
+      labsSection(),
     );
     paintSummary();
   }
