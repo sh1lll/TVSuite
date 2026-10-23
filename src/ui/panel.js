@@ -11,9 +11,10 @@ import { soundTab } from './tab-sound.js';
 import { bridgeTab } from './tab-bridge.js';
 import { riskTab } from './tab-risk.js';
 import { captureTab } from './tab-capture.js';
+import { levelsTab } from './tab-levels.js';
 import { isTypingTarget } from '../core/hotkeys.js';
 
-const ALL_TABS = [['skins', 'Skins'], ['sound', 'Sound'], ['risk', 'Risk'], ['capture', 'Capture'], ['bridge', 'Bridge'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
+const ALL_TABS = [['skins', 'Skins'], ['sound', 'Sound'], ['risk', 'Risk'], ['capture', 'Capture'], ['levels', 'Levels'], ['bridge', 'Bridge'], ['templates', 'Templates'], ['sessions', 'Sessions'], ['tools', 'Tools'], ['about', 'About']];
 const SHORT = { templates: 'Backup' };
 const POS_KEY = 'ui:pos';
 
@@ -84,7 +85,7 @@ export async function createPanel(app) {
   const views = {};
   function view(id) {
     if (!views[id]) {
-      const make = { skins: skinsTab, sound: soundTab, bridge: bridgeTab, risk: riskTab, capture: captureTab, templates: templatesTab, sessions: sessionsTab, tools: toolsTab, about: aboutTab }[id];
+      const make = { skins: skinsTab, sound: soundTab, bridge: bridgeTab, risk: riskTab, capture: captureTab, levels: levelsTab, templates: templatesTab, sessions: sessionsTab, tools: toolsTab, about: aboutTab }[id];
       views[id] = make(app);
     }
     return views[id];

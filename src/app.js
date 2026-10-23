@@ -27,12 +27,15 @@ import { setupJournalCapture } from './ui/journal-capture.js';
 import { maybeAutoBackup } from './modules/templates/snapshots.js';
 import { starterSkins } from './modules/skins/starters.js';
 import { createTvApi } from './modules/templates/api.js';
+import { createLevels } from './modules/levels/index.js';
+import { createDrawings } from './modules/drawings/index.js';
 import { WORKER_SOURCE } from 'tvsuite:worker-source';
 
 export const VERSION = '0.1.0';
 
-// Ask the MAIN-world helper a question (synchronous CustomEvent round trip).
-function queryMain(q) {
+// Ask the MAIN-world helper a question (synchronous CustomEvent round trip). Drawing many shapes can take
+// longer than a plain query, so callers may raise the timeout.
+function queryMain(q, timeoutMs = 200) {
   return new Promise((resolve) => {
     let answered = false;
     const onAnswer = (e) => {
@@ -42,7 +45,7 @@ function queryMain(q) {
     };
     document.addEventListener('tvsuite:answer', onAnswer);
     document.dispatchEvent(new CustomEvent('tvsuite:query', { detail: q }));
-    setTimeout(() => { if (!answered) { document.removeEventListener('tvsuite:answer', onAnswer); resolve(null); } }, 200);
+    setTimeout(() => { if (!answered) { document.removeEventListener('tvsuite:answer', onAnswer); resolve(null); } }, timeoutMs);
   });
 }
 
@@ -107,6 +110,8 @@ export async function startTVSuite({ ai = null, openOptions = null, fetchGallery
   app.voice = createVoice(app);
   app.cowatch = createCowatch(app);
   app.link = createSymbolLink({ getSymbol: () => skins.symbol(), getSettings: () => settings, bus });
+  app.levels = createLevels(app);
+  app.drawings = createDrawings(app);
   await skins.start();
   sound.start();
   const panel = await createPanel(app);

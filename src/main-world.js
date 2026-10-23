@@ -81,6 +81,146 @@
     return fillRect.call(this, x, y, w, h);
   };
 
+  // TradingView's page API: `TradingViewApi` on tradingview.com, `tradingViewApi` inside Charting Library frames
+  // (TopstepX/ProjectX, TradeSea, …). Last resort: any global that looks like a chart widget.
+  function chartApi() {
+    const direct = window.TradingViewApi || window.tradingViewApi;
+    if (direct && typeof direct.activeChart === 'function') return { api: direct, via: window.TradingViewApi ? 'TradingViewApi' : 'tradingViewApi' };
+    for (const k of Object.keys(window)) {
+      try {
+        const v = window[k];
+        if (v && typeof v === 'object' && typeof v.activeChart === 'function') return { api: v, via: k };
+      } catch (_) { /* cross-origin or getter that throws */ }
+    }
+    return null;
+  }
+
+  // Shapes drawn by the Levels tab, so they can be cleared without touching the user's own drawings.
+  const levelIds = (window.__tvsuiteLevelIds = window.__tvsuiteLevelIds || []);
+  function clearLevels(chart) {
+    let n = 0;
+    for (const id of levelIds.splice(0)) {
+      try { chart.removeEntity(id); n++; } catch (_) { /* already removed by the user */ }
+    }
+    return n;
+  }
+  // Temporary levels: kept out of the saved layout and the undo history, locked so a stray click doesn't move them.
+  // Permanent levels: saved into the platform's layout like hand-drawn ones (so they stay without TVSuite); their
+  // ids are reported back with a 'tvsuite:levelsPerm' event so TVSuite can remove them later.
+  function drawLevels(chart, levels, opts) {
+    const permanent = !!opts.permanent;
+    if (permanent || opts.replace !== false) clearLevels(chart);
+    const now = Math.floor(Date.now() / 1000);
+    const span = Math.max(1, Math.min(24 * 14, +opts.extendHours || 24)) * 3600;
+    const base = permanent ? { lock: !!opts.lock, disableSave: false, disableUndo: true, zOrder: 'bottom' } : { lock: true, disableSave: true, disableUndo: true, zOrder: 'bottom' };
+    const made = [];
+    const keep = (r) => made.push(Promise.resolve(r).then((id) => { if (id != null && !permanent) levelIds.push(id); return id; }).catch(() => null));
+    // Template styles (already filtered to plain values by the content script) win over the default look.
+    const tplOf = (l) => {
+      const out = {};
+      if (l.overrides && typeof l.overrides === 'object') {
+        for (const [k, v] of Object.entries(l.overrides).slice(0, 80)) {
+          if (k.length <= 40 && (typeof v === 'number' || typeof v === 'boolean' || (typeof v === 'string' && v.length <= 80))) out[k] = v;
+        }
+      }
+      return out;
+    };
+    let n = 0;
+    for (const l of levels.slice(0, 300)) {
+      const top = +l.top, bottom = +l.bottom;
+      if (!Number.isFinite(top) || !Number.isFinite(bottom)) continue;
+      const color = String(l.color || '#9696a0').slice(0, 32);
+      const text = String(l.label || '').slice(0, 80);
+      if (opts.style === 'box' && top > bottom && typeof chart.createMultipointShape === 'function') {
+        keep(chart.createMultipointShape([{ time: now - span, price: top }, { time: now + span, price: bottom }], {
+          ...base, shape: 'rectangle', text,
+          overrides: { color, backgroundColor: String(l.fill || color).slice(0, 40), fillBackground: true, linewidth: 1, showLabel: !!text, textColor: color, horzLabelsAlign: 'right', vertLabelsAlign: 'middle', fontSize: 11, ...tplOf(l) },
+        }));
+      } else {
+        keep(chart.createShape({ time: now, price: (top + bottom) / 2 }, {
+          ...base, shape: 'horizontal_line', text,
+          overrides: { linecolor: color, linewidth: 1, linestyle: 0, showLabel: !!text, textcolor: color, horzLabelsAlign: 'right', vertLabelsAlign: 'top', fontsize: 11, ...tplOf(l) },
+        }));
+      }
+      n++;
+    }
+    if (permanent) {
+      Promise.all(made).then((ids) => {
+        document.dispatchEvent(new CustomEvent('tvsuite:levelsPerm', { detail: JSON.stringify({ ids: ids.filter((id) => id != null).map(String) }) }));
+      });
+    }
+    return n;
+  }
+
+  // Drawings copied from a TradingView chart. Reading: every shape on the chart except TVSuite's own temporary ones.
+  const drawingIds = (window.__tvsuiteDrawingIds = window.__tvsuiteDrawingIds || []);
+  function copyDrawings(chart) {
+    if (typeof chart.getAllShapes !== 'function' || typeof chart.getShapeById !== 'function') return { ok: false, reason: 'This chart doesn\'t let pages read its drawings.' };
+    const own = new Set([...levelIds, ...drawingIds].map(String));
+    const items = [];
+    let failed = 0;
+    for (const s of chart.getAllShapes().slice(0, 1000)) {
+      if (!s || own.has(String(s.id))) continue;
+      try {
+        const shape = chart.getShapeById(s.id);
+        const props = typeof shape.getProperties === 'function' ? shape.getProperties() : {};
+        items.push({ name: String(s.name || ''), points: typeof shape.getPoints === 'function' ? shape.getPoints() : [], props: JSON.parse(JSON.stringify(props || {})) });
+      } catch (_) { failed++; }
+    }
+    return { ok: true, symbol: typeof chart.symbol === 'function' ? chart.symbol() : null, items, failed };
+  }
+
+  const plain = (v) => (typeof v === 'number' && Number.isFinite(v)) || typeof v === 'boolean' || (typeof v === 'string' && v.length <= 2000);
+  function deepPlain(o, depth) {
+    const out = {};
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return out;
+    for (const [k, v] of Object.entries(o).slice(0, 200)) {
+      if (k.length > 40 || k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      if (plain(v)) out[k] = v;
+      else if (v && typeof v === 'object' && depth < 2) out[k] = deepPlain(v, depth + 1);
+    }
+    return out;
+  }
+  // Writing: each drawing is created with its own tool and points, flat style values as overrides, then the full
+  // (nested) style applied on top where the chart allows it. Tools this chart doesn't have are skipped and named.
+  function pasteDrawings(chart, items, opts) {
+    const permanent = !!opts.permanent;
+    if (!permanent || opts.replace !== false) for (const id of drawingIds.splice(0)) { try { chart.removeEntity(id); } catch (_) { /* gone */ } }
+    const base = permanent ? { lock: !!opts.lock, disableSave: false, disableUndo: true } : { lock: true, disableSave: true, disableUndo: true };
+    const made = [], skipped = [];
+    for (const d of items.slice(0, 500)) {
+      const name = String(d && d.name || '');
+      const pts = (Array.isArray(d && d.points) ? d.points : []).slice(0, 20).map((p) => ({ time: +p.time, price: +p.price })).filter((p) => Number.isFinite(p.time) && Number.isFinite(p.price));
+      if (!/^[a-z0-9_]{1,40}$/.test(name) || !pts.length) { skipped.push(name || '?'); continue; }
+      const props = deepPlain(d.props, 0);
+      const flat = {};
+      for (const [k, v] of Object.entries(props)) if (plain(v)) flat[k] = v;
+      const o = { ...base, shape: name, overrides: flat };
+      if (d.text) o.text = String(d.text).slice(0, 2000);
+      try {
+        const r = pts.length > 1 && typeof chart.createMultipointShape === 'function' ? chart.createMultipointShape(pts, o) : chart.createShape(pts[0], o);
+        made.push(Promise.resolve(r).then((id) => {
+          if (id == null) { skipped.push(name); return null; }
+          try { const sh = chart.getShapeById(id); if (sh && typeof sh.setProperties === 'function') sh.setProperties(props); } catch (_) { /* flat overrides already applied */ }
+          if (!permanent) drawingIds.push(id);
+          return id;
+        }).catch(() => { skipped.push(name); return null; }));
+      } catch (_) { skipped.push(name); }
+    }
+    Promise.all(made).then((ids) => {
+      document.dispatchEvent(new CustomEvent('tvsuite:drawingsDone', { detail: JSON.stringify({ permanent, ids: ids.filter((id) => id != null).map(String), skipped }) }));
+    });
+    return { attempted: made.length, skipped };
+  }
+
+  function removeIds(chart, ids) {
+    let n = 0;
+    for (const id of ids.slice(0, 600)) {
+      try { chart.removeEntity(String(id)); n++; } catch (_) { /* already deleted by hand */ }
+    }
+    return n;
+  }
+
   // Answer small, explicit queries from the isolated-world content script.
   document.addEventListener('tvsuite:query', (e) => {
     let detail = null;
@@ -123,6 +263,18 @@
             ed.setPosition({ lineNumber: 1, column: 1 });
             detail = JSON.stringify({ ok: true });
           } else detail = JSON.stringify({ ok: false });
+        } else if (/^(levels(Draw|Clear|Probe|RemoveIds)|drawings(Copy|Paste|Clear))$/.test(cmd.cmd)) {
+          const found = chartApi();
+          const lc = found && found.api.activeChart();
+          if (!lc) detail = JSON.stringify({ ok: false, reason: 'This frame has no TradingView chart API.', frames: document.querySelectorAll('iframe').length });
+          else if (cmd.cmd === 'drawingsCopy') detail = JSON.stringify(copyDrawings(lc));
+          else if (cmd.cmd === 'drawingsPaste') detail = JSON.stringify({ ok: true, symbol: typeof lc.symbol === 'function' ? lc.symbol() : null, ...pasteDrawings(lc, Array.isArray(cmd.items) ? cmd.items : [], cmd.opts || {}) });
+          else if (cmd.cmd === 'drawingsClear') detail = JSON.stringify({ ok: true, count: removeIds(lc, drawingIds.splice(0)) });
+          else if (cmd.cmd === 'levelsProbe') {
+            detail = JSON.stringify({ ok: true, via: found.via, symbol: typeof lc.symbol === 'function' ? lc.symbol() : null, rectangles: typeof lc.createMultipointShape === 'function', lines: typeof lc.createShape === 'function', drawn: levelIds.length });
+          } else if (cmd.cmd === 'levelsClear') detail = JSON.stringify({ ok: true, count: clearLevels(lc) });
+          else if (cmd.cmd === 'levelsRemoveIds') detail = JSON.stringify({ ok: true, count: removeIds(lc, Array.isArray(cmd.ids) ? cmd.ids : []) });
+          else detail = JSON.stringify({ ok: true, count: drawLevels(lc, Array.isArray(cmd.levels) ? cmd.levels : [], cmd.opts || {}) });
         } else if (cmd.cmd === 'chartInfo' && chart) {
           detail = JSON.stringify({ symbol: typeof chart.symbol === 'function' ? chart.symbol() : null, interval: typeof chart.resolution === 'function' ? chart.resolution() : null });
         } else detail = JSON.stringify({ ok: false });

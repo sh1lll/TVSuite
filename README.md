@@ -46,6 +46,23 @@ There's also a chart-time tracker (time per session and symbol, with break remin
 - A trade recorder that starts when you enter and stops after you're flat, and keeps the seconds before your entry too. It records the chart itself, so there's no screen-share prompt. Clips land in a recordings library with entry and exit markers.
 - Discord webhooks and Telegram bots for cards, journal entries, recaps, limit hits and recordings.
 
+### Levels
+
+Brings your TradingView drawings, and levels from the Ledgeline indicator, onto any chart TVSuite runs on, including TopstepX/ProjectX and TradeSea, whose embedded charts have no way to import drawings of their own.
+
+**Your TradingView drawings.** On tradingview.com, open the chart and press **Copy drawings from this chart** in the Levels tab. Then open the other platform, open the Levels tab there and press **Paste here**. The drawings come back with their own tools, points and style, saved into that platform's chart layout like ones you drew by hand, so they stay without TVSuite. **Preview (until reload)** shows them without saving. Copies live in the extension, one per market (every spelling of NQ, and MNQ, share one), so there's nothing to copy and paste by hand. Tools a platform's chart doesn't have are skipped and named. **Remove pasted drawings** deletes only what TVSuite pasted on that site. Prices carry over unchanged, so paste onto the same contract you copied from (around a roll, `NQ1!` and the platform's contract can differ). In TradingView Desktop (or the userscript), TVSuite's storage isn't shared with Chrome, so press **Export copy** after copying: the drawings go to the clipboard as a block of text. On the other platform, press **Import from clipboard** (or paste into the Import copy box and press **Import copy**), then **Paste here**. The same text works for sending drawings to someone else.
+
+**Ledgeline levels:**
+
+1. In Ledgeline, turn on **Export levels to Pine Logs**, open the indicator's Pine Logs and copy the lines (timestamps and the header line are ignored).
+2. Paste them into the **Levels** tab and press **Draw on this chart**.
+
+You choose which kinds to draw (prime ledges, volume ledges, rejection zones, single prints, naked POCs), boxes or middle lines, and labels. Each kind is styled with a color or with one of your own saved drawing templates (Rectangle templates for boxes, Horizontal Line templates for lines). Templates come from a snapshot taken in the Templates tab on tradingview.com (Snapshot now), and since snapshots are stored in the extension, they're available on every site.
+
+Once drawn, levels stay on: they come back every time a chart opens, on any site TVSuite runs on, until you press **Remove TVSuite levels**, which deletes only what TVSuite drew. Levels are drawn with the chart's own drawing tools, locked, and kept out of your saved layout. **Check this chart** reports whether the page exposes the chart's drawing API.
+
+**Draw permanently** saves the levels into the platform's own chart layout instead, like drawings you made by hand. They stay without TVSuite, and you can move or delete them yourself (Lock permanent levels keeps them from moving by accident). Drawing permanently switches the auto-redraw off so the two don't double up. TVSuite remembers which ones it saved on each site, so **Remove permanent levels** (or drawing permanently again, with Replace on) removes only those. This relies on the platform saving its chart layout, so reload the page once to check.
+
 ### Mini windows
 
 A small always-on-top chart (price, tick line, session, day P&L) for when you're in other apps, and a floating player for your own video, YouTube or Twitch while you trade. Alt+Shift+P opens the mini chart.
@@ -166,7 +183,7 @@ The e2e suite serves `test/fixtures/mock-tv.html` and a fake template backend on
 
 The roadmap is in [`docs/ROADMAP.md`](docs/ROADMAP.md). Research notes: [TradingView gaps](docs/research/tradingview-gaps.md), [ChartSkins teardown](docs/research/chartskins.md), [template-manager analysis](docs/research/template-manager.md), [platform bridge](docs/research/platform-bridge.md), [integration facts](docs/research/integrations.md) and [ideas](docs/IDEAS.md).
 
-There are 107 unit tests and 69 end-to-end checks. The end-to-end checks run the real extension in Chromium against the mock page, covering every feature above, the desktop bundle, and the launcher over CDP.
+There are 124 unit tests and 71 end-to-end checks. The end-to-end checks run the real extension in Chromium against the mock page, covering every feature above, the desktop bundle, and the launcher over CDP.
 
 Some things can only be checked on live TradingView or real hardware:
 
